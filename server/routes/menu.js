@@ -1,87 +1,72 @@
 const express = require("express")
-
 const router = express.Router()
-
 const db = require("../db")
 
+// 1. LẤY DANH SÁCH MENU (SỬA ĐỂ PHÙ HỢP VỚI THƯ VIỆN 'pg')
 router.get(
     "/",
     async (req, res) => {
-
-        const [rows] =
-
-            await db.query(
-
+        try {
+            const result = await db.query(
                 `
-SELECT *
-FROM menu
-WHERE status!='Ngừng bán'
-ORDER BY id DESC
-`
-
+                SELECT *
+                FROM menu
+                WHERE status != 'Ngừng bán'
+                ORDER BY id DESC
+                `
             )
 
-        res.json(rows)
+            // Thư viện 'pg' trả về Object, dữ liệu thực tế nằm trong mảng .rows
+            const rows = result.rows || result;
 
+            res.json(rows)
+        } catch (err) {
+            console.error("Lỗi khi lấy menu:", err.message);
+            res.status(500).json({ success: false, error: err.message });
+        }
     }
 )
 
+// 2. CẬP NHẬT TOÀN BỘ MENU (ĐÃ CHUẨN POSTGRESQL)
 router.post(
     "/",
     async (req, res) => {
+        try {
+            const menu = req.body
 
-        const menu =
-            req.body
+            // Xóa toàn bộ menu cũ trước khi nạp mới
+            await db.query("DELETE FROM menu")
 
-        await db.query(
+            for (const item of menu) {
+                await db.query(
+                    `
+                    INSERT INTO menu (
+                        id,
+                        name,
+                        price,
+                        image,
+                        status
+                    )
+                    VALUES ($1, $2, $3, $4, $5)
+                    `,
+                    [
+                        item.id,
+                        item.name,
+                        item.price,
+                        item.image,
+                        item.status
+                    ]
+                )
+            }
 
-            "DELETE FROM menu"
-
-        )
-
-        for (const item of menu) {
-
-            await db.query(
-
-                `
-INSERT INTO menu
-(
-id,
-name,
-price,
-image,
-status
-)
-
-VALUES($1, $2, $3, $4, $5)
-`,
-
-                [
-
-                    item.id,
-
-                    item.name,
-
-                    item.price,
-
-                    item.image,
-
-                    item.status
-
-                ]
-
-            )
-
+            res.json({
+                success: true
+            })
+        } catch (err) {
+            console.error("Lỗi khi cập nhật menu:", err.message);
+            res.status(500).json({ success: false, error: err.message });
         }
-
-        res.json({
-
-            success: true
-
-        })
-
     }
 )
 
-module.exports =
-    router
+module.exports = router
