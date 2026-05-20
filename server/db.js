@@ -32,5 +32,39 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
+async function createTablesIfNotExist() {
+  try {
+    // 1. Tạo bảng menu chuẩn cấu trúc của bạn
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS menu (
+        id INT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        price INT NOT NULL,
+        image TEXT,
+        status VARCHAR(50) DEFAULT 'Còn bán'
+      );
+    `);
 
+    // 2. Tạo bảng orders lưu đơn hàng
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        customer_name VARCHAR(255),
+        phone VARCHAR(50),
+        items TEXT,
+        note TEXT,
+        total INT,
+        status VARCHAR(50) DEFAULT 'Đã nhận',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log("=== [DATABASE] Đã kiểm tra và tự động cấu hình xong các bảng ===");
+  } catch (err) {
+    console.error("=== [DATABASE ERROR] Lỗi tự động tạo bảng: ===", err);
+  }
+}
+
+// Chạy hàm tạo bảng ngay khi khởi động server
+createTablesIfNotExist();
 module.exports = pool;
