@@ -20,7 +20,7 @@
             <div class="relative px-4 pb-4">
                 <div class="flex flex-col items-center -translate-y-10">
                     <img src="assets/logo.jpg" class="w-24 h-24 rounded-full border-4 border-white bg-white shadow-lg object-cover">
-                    <h1 class="text-3xl font-bold text-green-700 mt-2 text-center">Tiệm Nhà Mi</h1>
+                    <h1 class="text-3xl font-bold text-green-700 mt-2 text-center">Tiệm Nhà Mị</h1>
                     <p class="text-pink-500 font-medium text-sm">Trà Ngon • Đậm Vị</p>
                     <p class="text-slate-500 text-xs mt-1">📍 Gò Vấp • TP Hồ Chí Minh</p>
                     <p class="text-green-600 font-bold text-sm">📞 0938 084 729</p>
@@ -87,6 +87,11 @@
                 // Tính tổng số lượng của món này dựa trên tất cả các option cộng lại
                 const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0)
 
+                // Tự động nối link domain Render nếu lưu dạng đường dẫn tương đối /uploads/...
+                const fullImgUrl = item.image 
+                    ? (item.image.startsWith('/') ? 'https://drink-order-backend.onrender.com' + item.image : item.image) 
+                    : 'https://placehold.co/100';
+
                 // Tạo HTML cho phần danh sách tùy chọn cấu hình Đường/Đá
                 let optionsHtml = ""
                 if (!sold && totalItemQty > 0) {
@@ -132,7 +137,7 @@
                         </div>`
                     })
 
-                    // Nút bấm thần thánh: Cho phép khách thêm một form đường đá mới hoàn toàn cho cùng 1 loại nước
+                    // Nút bấm thêm tùy chọn mới
                     optionsHtml += `
                     <button onclick="addNewOption(${item.id})" class="w-full mt-2 py-2 border border-dashed border-green-600 text-green-700 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors">
                         ➕ Thêm tùy chọn Đường / Đá khác cho món này
@@ -142,7 +147,7 @@
                 box.innerHTML += `
                 <div class="bg-white rounded-2xl shadow border mb-3 p-3">
                     <div class="flex gap-3">
-                        <img src="${item.image || 'https://placehold.co/100'}" onclick="showImage('${item.image}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border">
+                        <img src="${fullImgUrl}" onclick="showImage('${fullImgUrl}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border">
                         <div class="flex-1 flex flex-col justify-between">
                             <div>
                                 <div class="font-bold text-slate-800">${item.name}</div>
@@ -172,10 +177,8 @@
         function changeMainQty(id, n) {
             const options = cart[id]
             if (n > 0) {
-                // Nếu tăng: Luôn cộng vào option đầu tiên hoặc option cuối cùng đang thao tác
                 options[options.length - 1].qty += 1
             } else {
-                // Nếu giảm: Tìm vị trí option đang có số lượng > 0 từ dưới lên để trừ bớt
                 for (let i = options.length - 1; i >= 0; i--) {
                     if (options[i].qty > 0) {
                         options[i].qty -= 1;
@@ -242,7 +245,6 @@
                 options.forEach(opt => {
                     if (opt.qty <= 0) return;
 
-                    // Đẩy từng nhóm tùy chọn có số lượng cụ thể lên server
                     items.push({
                         name: item.name,
                         qty: opt.qty,
@@ -259,7 +261,7 @@
             const payload = {
                 customer_name: customer,
                 phone,
-                items: JSON.stringify(items), // Chuỗi dữ liệu JSON hoàn hảo gồm nhiều cấu hình của cùng 1 món
+                items: JSON.stringify(items),
                 note,
                 total,
                 status: "Đã nhận"
