@@ -88,11 +88,11 @@
                 });
                 render();
             } catch (err) {
-                console.error("Lỗi tải menu hoặc không kết nối được backend:", err);
+                console.error("Lỗi tải menu:", err);
             }
         }
 
-        // 2. RENDER GIAO DIỆN KHÁCH HÀNG (ĐÃ FIX ĐỒNG BỘ ẢNH)
+        // 2. RENDER GIAO DIỆN KHÁCH HÀNG
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
@@ -105,10 +105,9 @@
             menu.forEach(item => {
                 const sold = item.status === "Hết hàng";
                 const options = cart[item.id] || [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
-                
                 const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0);
 
-                // FIX KHÔNG BỊ TRÙNG LẶP LINK: Tự nhận biết thông minh dạng chuỗi link ảnh
+                // Tự động nhận diện và sửa lỗi link ảnh nếu dính tên miền cũ
                 let fullImgUrl = 'https://placehold.co/120';
                 if (item.image) {
                     if (item.image.startsWith('http')) {
@@ -234,6 +233,7 @@
             }
         }
 
+        // Hàm phóng to ảnh
         function showImage(src) {
             if (!src) return;
             const modal = document.getElementById("imageModal");
@@ -244,6 +244,7 @@
             }
         }
 
+        // Hàm đóng ảnh phóng to
         function closeImage() {
             document.getElementById("imageModal").classList.add("hidden");
         }
@@ -271,4 +272,63 @@
             let total = 0;
 
             menu.forEach(item => {
-                const
+                const options = cart[item.id] || [];
+                options.forEach(opt => {
+                    if (opt.qty <= 0) return;
+
+                    items.push({
+                        name: item.name,
+                        qty: opt.qty,
+                        sugar: opt.sugar,
+                        ice: opt.ice,
+                        note: opt.note || ""
+                    });
+                    total += (Number(item.price) || 0) * opt.qty;
+                });
+            });
+
+            if (!items.length) { alert("Bạn chưa chọn món ăn nào!"); return; }
+
+            const payload = {
+                customer_name: customer,
+                phone,
+                items: JSON.stringify(items),
+                note,
+                total,
+                status: "Đã nhận"
+            };
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.error || "Gửi đơn hàng lỗi") }
+
+                showSuccess();
+                document.getElementById("customer").value = "";
+                document.getElementById("phone").value = "";
+                document.getElementById("orderNote").value = "";
+
+                cart = {};
+                menu.forEach(item => {
+                    cart[item.id] = [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
+                });
+                render();
+            } catch (error) {
+                console.error(error);
+                alert("Gửi đơn hàng thất bại. Vui lòng thử lại!");
+            }
+        }
+
+        function showSuccess() { document.getElementById("successModal").classList.remove("hidden"); }
+        function closeSuccess() { document.getElementById("successModal").classList.add("hidden"); }
+
+        loadMenu();
+    </script>
+</body>
+
+</html>
