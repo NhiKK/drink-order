@@ -415,30 +415,19 @@ h-10
 
                     await response.json()
 
-                menu[index].image =
-                    data.url
+                const fullImageUrl = data.url.startsWith('/') 
+                    ? `https://drink-order-backend.onrender.com${data.url}` 
+                    : data.url;
+
+                menu[index].image = fullImageUrl
 
                 // lấy img cùng card
-                const card =
-
-                    event.target.closest(
-                        ".drink-card"
-                    )
-
+                const card = event.target.closest(".drink-card")
                 if (card) {
-
-                    const img =
-
-                        card.querySelector(
-                            "img"
-                        )
-
+                    const img = card.querySelector("img")
                     if (img) {
-
-                        img.src =
-                            data.url
+                        img.src = fullImageUrl
                     }
-
                 }
 
             }
