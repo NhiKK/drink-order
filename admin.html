@@ -51,7 +51,7 @@
             const box = document.getElementById("menuList");
             box.innerHTML = "";
 
-            if (menu.length === 0) {
+            if (!menu || menu.length === 0) {
                 box.innerHTML = `<div class="text-center py-10 text-slate-400 italic bg-white rounded-2xl shadow">Menu hiện đang trống. Vui lòng bấm "+ Thêm món" để tạo mới!</div>`;
                 return;
             }
@@ -96,18 +96,18 @@
             });
         }
 
-        // 4. HÀM CẬP NHẬT TRỰC TIẾP DỮ LIỆU KHI GÕ CHỮ HOẶC THAY ĐỔI TRẠNG THÁI
+        // 4. HÀM CẬP NHẬT TRỰC TIẾP DỮ LIỆU VÀO MẢNG KHÔNG SỢ LỖI CHUỖI
         function updateMenuField(index, field, value) {
             if (menu[index]) {
                 menu[index][field] = value;
             }
         }
 
-        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN KHI GÕ
+        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN (ÉP CHẶT THÀNH KIỂU SỐ NGUYÊN)
         function changePrice(el, index) {
             const raw = el.value.replace(/\D/g, "");
             if (menu[index]) {
-                menu[index].price = Number(raw);
+                menu[index].price = raw ? Number(raw) : 0;
             }
             el.value = money(raw);
         }
@@ -130,14 +130,12 @@
 
                 const data = await response.json();
                 
-                // Chuẩn hóa link ảnh từ server trả về
                 const fullImageUrl = data.url.startsWith('/') 
                     ? `https://drink-order-backend.onrender.com${data.url}` 
                     : data.url;
 
                 menu[index].image = fullImageUrl;
 
-                // Cập nhật thẻ IMG hiển thị ngay lập tức trên giao diện
                 const card = event.target.closest(".drink-card");
                 if (card) {
                     const img = card.querySelector("img");
@@ -152,7 +150,7 @@
         // 7. THÊM MÓN MỚI LÊN ĐẦU DANH SÁCH
         function addDrink() {
             menu.unshift({
-                id: Date.now(),
+                id: Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000), // Tạo ID số nguyên an toàn cho Postgres INT
                 name: "",
                 price: 0,
                 image: "",
@@ -161,7 +159,7 @@
             render();
         }
 
-        // 8. XÓA TẠM THỜI MÓN KHỎI DANH SÁCH MẢNG
+        // 8. XÓA MÓN KHỎI MẢNG TẠM
         function removeDrink(i) {
             if (confirm("Bạn có chắc chắn muốn xóa món này không?")) {
                 menu.splice(i, 1);
@@ -169,17 +167,23 @@
             }
         }
 
-        // 9. GỬI DỮ LIỆU ĐÃ CHUẨN HÓA LÊN BACKEND LƯU VÀO POSTGRESQL
+        // 9. GỬI DỮ LIỆU ĐÃ CHUẨN HÓA LÊN BACKEND RENDER
         async function saveMenu() {
-            // Kiểm tra tính hợp lệ dữ liệu trước khi lưu
+            if (menu.length === 0) {
+                alert("Menu trống, không có gì để lưu!");
+                return;
+            }
+
+            // Kiểm tra tính hợp lệ dữ liệu để tránh sập Postgres
             for (let i = 0; i < menu.length; i++) {
-                if (!menu[i].name.trim()) {
-                    alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món. Vui lòng bổ sung đầy đủ thông tin!`);
+                if (!menu[i].name || !menu[i].name.trim()) {
+                    alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món!`);
                     return;
                 }
-                if (menu[i].price <= 0) {
-                    alert(`Cảnh báo: Món "${menu[i].name}" đang để giá bằng 0đ.`);
-                }
+                // Đảm bảo các trường không bị undefined
+                menu[i].price = menu[i].price ? Number(menu[i].price) : 0;
+                menu[i].image = menu[i].image || "";
+                menu[i].status = menu[i].status || "Đang bán";
             }
 
             try {
@@ -192,21 +196,18 @@
                 });
 
                 if (response.ok) {
-                    alert("🎉 Đã lưu danh sách Menu mới xuống Database thành công!");
-                    loadMenu(); // Tải lại dữ liệu gốc từ DB để đồng bộ hoàn chỉnh
+                    alert("🎉 Đã cập nhật và lưu danh sách Menu xuống Database thành công!");
+                    loadMenu();
                 } else {
-                    alert("❌ Lưu menu thất bại. Vui lòng kiểm tra lại log Backend!");
+                    alert("❌ Server báo lỗi 500! Hãy chắc chắn bạn đã điền đúng định dạng.");
                 }
             } catch (error) {
                 console.error("Lỗi:", error);
-                alert("❌ Không thể kết nối đến server Backend Render!");
+                alert("❌ Không thể kết nối tới server Backend!");
             }
         }
 
-        // Khởi chạy lấy dữ liệu ngay khi mở trang
         loadMenu();
     </script>
-
 </body>
-
 </html>
