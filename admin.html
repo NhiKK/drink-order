@@ -61,7 +61,7 @@
                 <div class="drink-card bg-white rounded-2xl p-4 shadow flex gap-4 border border-slate-200">
                     
                     <div class="w-28 flex flex-col items-center gap-2">
-                        <img src="${item.image || 'https://placehold.co/120'}" class="w-24 h-24 rounded-xl object-cover border">
+                        <img src="${item.image ? (item.image.startsWith('http') ? item.image : 'https://drink-order-backend.onrender.com' + item.image) : 'https://placehold.co/120'}" class="w-24 h-24 rounded-xl object-cover border">
                         <label class="bg-blue-500 text-white rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer text-center block hover:bg-blue-600 transition">
                             Upload ảnh
                             <input hidden type="file" accept="image/*" onchange="uploadImage(event, ${index})">
@@ -130,17 +130,21 @@
 
                 const data = await response.json();
                 
-                const fullImageUrl = data.url.startsWith('/') 
-                    ? `https://drink-order-backend.onrender.com${data.url}` 
-                    : data.url;
+                // CHUẨN HÓA: Nếu server trả về dạng "/uploads/abc.png", ta phải thêm domain Render vào đầu
+                const backendUrl = "https://drink-order-backend.onrender.com";
+                const fullImageUrl = data.url.startsWith('http') ? data.url : `${backendUrl}${data.url}`;
 
+                // Cập nhật link ảnh tuyệt đối vào mảng dữ liệu gốc
                 menu[index].image = fullImageUrl;
 
+                // Cập nhật trực tiếp lên màn hình hiển thị xem trước (Preview)
                 const card = event.target.closest(".drink-card");
                 if (card) {
                     const img = card.querySelector("img");
                     if (img) img.src = fullImageUrl;
                 }
+                
+                alert("Upload ảnh thành công! Nhớ bấm nút LƯU MENU để hoàn tất.");
             } catch (error) {
                 console.error(error);
                 alert("Upload ảnh thất bại!");
