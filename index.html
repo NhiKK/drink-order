@@ -58,7 +58,7 @@
 
         async function loadMenu() {
             try {
-                const res = await fetch("/api/menu")
+                const res = await fetch("https://drink-order-backend.onrender.com/api/menu")
                 menu = await res.json()
                 menu = menu.filter(x => x.status !== "Ngừng bán")
 

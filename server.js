@@ -70,7 +70,7 @@ storage
 
 app.post(
 
-"/api/upload",
+"https://drink-order-backend.onrender.com/api/upload",
 
 upload.single(
 "image"
@@ -108,12 +108,12 @@ req.file.filename
 )
 
 app.use(
-"/api/menu",
+"https://drink-order-backend.onrender.com/api/menu",
 require("./server/routes/menu")
 )
 
 app.use(
-"/api/orders",
+"https://drink-order-backend.onrender.com/api/orders",
 require("./server/routes/orders")
 )
 

@@ -237,7 +237,7 @@
         }
 
         async function updateStatus(id, status) {
-            await fetch(`/api/orders/${id}`, {
+            await fetch(`https://drink-order-backend.onrender.com/api/orders/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status })
