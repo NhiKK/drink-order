@@ -96,14 +96,14 @@
             });
         }
 
-        // 4. HÀM CẬP NHẬT TRỰC TIẾP DỮ LIỆU VÀO MẢNG KHÔNG SỢ LỖI CHUỖI
+        // 4. HÀM CẬP NHẬT TRỰC TIẾP DỮ LIỆU KHI GÕ CHỮ HOẶC THAY ĐỔI TRẠNG THÁI
         function updateMenuField(index, field, value) {
             if (menu[index]) {
                 menu[index][field] = value;
             }
         }
 
-        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN (ÉP CHẶT THÀNH KIỂU SỐ NGUYÊN)
+        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN
         function changePrice(el, index) {
             const raw = el.value.replace(/\D/g, "");
             if (menu[index]) {
@@ -147,10 +147,13 @@
             }
         }
 
-        // 7. THÊM MÓN MỚI LÊN ĐẦU DANH SÁCH
+        // 7. THÊM MÓN MỚI LÊN ĐẦU DANH SÁCH (Đã fix rút ngắn ID an toàn cho kiểu INT của Postgres)
         function addDrink() {
+            // Lấy 6 số cuối timestamp + 3 số ngẫu nhiên = Tạo chuỗi số 9 chữ số an toàn tuyệt đối (< 2 tỷ)
+            const safeId = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
+            
             menu.unshift({
-                id: Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000), // Tạo ID số nguyên an toàn cho Postgres INT
+                id: safeId,
                 name: "",
                 price: 0,
                 image: "",
@@ -159,7 +162,7 @@
             render();
         }
 
-        // 8. XÓA MÓN KHỎI MẢNG TẠM
+        // 8. XÓA TẠM THỜI MÓN KHỎI DANH SÁCH MẢNG
         function removeDrink(i) {
             if (confirm("Bạn có chắc chắn muốn xóa món này không?")) {
                 menu.splice(i, 1);
@@ -167,20 +170,19 @@
             }
         }
 
-        // 9. GỬI DỮ LIỆU ĐÃ CHUẨN HÓA LÊN BACKEND RENDER
+        // 9. GỬI DỮ LIỆU ĐÃ CHUẨN HÓA LÊN BACKEND LƯU VÀO POSTGRESQL
         async function saveMenu() {
             if (menu.length === 0) {
                 alert("Menu trống, không có gì để lưu!");
                 return;
             }
 
-            // Kiểm tra tính hợp lệ dữ liệu để tránh sập Postgres
+            // Kiểm tra và làm sạch dữ liệu trước khi gửi
             for (let i = 0; i < menu.length; i++) {
                 if (!menu[i].name || !menu[i].name.trim()) {
-                    alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món!`);
+                    alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món. Vui lòng bổ sung đầy đủ thông tin!`);
                     return;
                 }
-                // Đảm bảo các trường không bị undefined
                 menu[i].price = menu[i].price ? Number(menu[i].price) : 0;
                 menu[i].image = menu[i].image || "";
                 menu[i].status = menu[i].status || "Đang bán";
@@ -196,14 +198,14 @@
                 });
 
                 if (response.ok) {
-                    alert("🎉 Đã cập nhật và lưu danh sách Menu xuống Database thành công!");
-                    loadMenu();
+                    alert("🎉 Đã lưu danh sách Menu mới xuống Database thành công!");
+                    loadMenu(); 
                 } else {
-                    alert("❌ Server báo lỗi 500! Hãy chắc chắn bạn đã điền đúng định dạng.");
+                    alert("❌ Lưu menu thất bại. Hãy kiểm tra lại định dạng dữ liệu!");
                 }
             } catch (error) {
                 console.error("Lỗi:", error);
-                alert("❌ Không thể kết nối tới server Backend!");
+                alert("❌ Không thể kết nối đến server Backend Render!");
             }
         }
 
