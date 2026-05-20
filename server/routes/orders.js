@@ -1,40 +1,4 @@
-const express = require("express")
-const router = express.Router()
-const db = require("../db")
-
-require("dotenv").config()
-
-// 1. LẤY DANH SÁCH ĐƠN HÀNG
-router.get("/", async (req, res) => {
-    try {
-        const result = await db.query("SELECT * FROM orders ORDER BY id DESC")
-        const orders = result.rows || result
-        res.json(orders)
-    } catch (err) {
-        console.error("Lỗi khi lấy danh sách đơn hàng:", err.message)
-        res.status(500).json({ success: false, error: err.message })
-    }
-})
-
-// 2. CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (DÀNH CHO ADMIN)
-router.put("/:id", async (req, res) => {
-    try {
-        const id = req.params.id
-        const { status } = req.body
-
-        await db.query(
-            `UPDATE orders SET status=$1 WHERE id=$2`,
-            [status, id]
-        )
-
-        res.json({ success: true })
-    } catch (err) {
-        console.error("Lỗi khi cập nhật trạng thái đơn:", err.message)
-        res.status(500).json({ success: false, error: err.message })
-    }
-})
-
-// 3. TIẾP NHẬN ĐƠN HÀNG MỚI (ĐÃ FIX BỎ CỘT DETAIL THỪA & SỬA LỖI CÚ PHÁP)
+// 3. TIẾP NHẬN ĐƠN HÀNG MỚI (ÉP TRUYỀN CHUỖI TRỐNG VÀO DETAIL ĐỂ TRÁNH LỖI NOT-NULL)
 router.post("/", async (req, res) => {
     try {
         const {
@@ -46,7 +10,7 @@ router.post("/", async (req, res) => {
             status
         } = req.body
 
-        // Tiến hành lưu xuống database Postgres (Bỏ hẳn cột detail không dùng)
+        // Giải pháp: Thêm lại cột detail vào câu lệnh SQL, nhưng gán giá trị mặc định là chuỗi rỗng '' ở mảng tham số
         const result = await db.query(
             `
             INSERT INTO orders (
@@ -55,17 +19,19 @@ router.post("/", async (req, res) => {
                 items,
                 note,
                 total,
+                detail,
                 status
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
             `,
             [
                 customer_name,
                 phone,
-                items, // Chuỗi JSON string từ index.html
+                items, 
                 note,
                 total,
+                "", // <--- TRUYỀN CHUỖI TRỐNG VÀO ĐÂY để database không bắt lỗi NOT NULL nữa
                 status || "Đã nhận"
             ]
         )
@@ -83,5 +49,3 @@ router.post("/", async (req, res) => {
         })
     }
 })
-
-module.exports = router
