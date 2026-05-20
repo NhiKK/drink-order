@@ -14,7 +14,8 @@ require("dotenv")
 router.get("/", async (req, res) => {
     try {
         const result = await db.query("SELECT * FROM orders ORDER BY id DESC");
-        const orders = Array.isArray(result[0]) ? result[0] : result;
+        //const orders = Array.isArray(result[0]) ? result[0] : result;
+        const orders = result.rows || result;
         
         res.json(orders); 
     } catch (err) {
@@ -38,8 +39,8 @@ router.put(
 
             `
 UPDATE orders
-SET status=?
-WHERE id=?
+SET status=$1
+WHERE id=$2
 `,
 
             [
