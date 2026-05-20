@@ -13,13 +13,13 @@
     <div class="max-w-md mx-auto bg-white min-h-screen pb-32">
         <div class="bg-white shadow-sm">
             <div class="relative">
-                <img src="assets/banner.jpg" class="w-full h-40 object-cover">
+                <img src="assets/banner.jpg" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/600x200?text=Tiem+Nha+Mi'">
                 <div class="absolute inset-0 bg-black/10"></div>
             </div>
 
             <div class="relative px-4 pb-4">
                 <div class="flex flex-col items-center -translate-y-10">
-                    <img src="assets/logo.jpg" class="w-24 h-24 rounded-full border-4 border-white bg-white shadow-lg object-cover">
+                    <img src="assets/logo.jpg" class="w-24 h-24 rounded-full border-4 border-white bg-white shadow-lg object-cover" onerror="this.src='https://placehold.co/100'">
                     <h1 class="text-3xl font-bold text-green-700 mt-2 text-center">Tiệm Nhà Mị</h1>
                     <p class="text-pink-500 font-medium text-sm">Trà Ngon • Đậm Vị</p>
                     <p class="text-slate-500 text-xs mt-1">📍 Gò Vấp • TP Hồ Chí Minh</p>
@@ -31,88 +31,113 @@
         <div id="menu" class="p-3"></div>
 
         <div class="p-4 space-y-3">
-            <input id="customer" placeholder="Tên khách hàng" class="border rounded-xl p-3 w-full">
-            <input id="phone" placeholder="Số điện thoại" class="border rounded-xl p-3 w-full">
-            <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn" class="border rounded-xl p-3 w-full"></textarea>
+            <input id="customer" placeholder="Tên khách hàng" class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600">
+            <input id="phone" placeholder="Số điện thoại" class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600">
+            <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn" class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600"></textarea>
         </div>
 
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 max-w-md mx-auto z-40">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 max-w-md mx-auto z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
             <div class="flex justify-between mb-3">
-                <div>Tạm tính</div>
+                <div class="font-medium text-slate-700">Tạm tính</div>
                 <div id="total" class="font-bold text-red-500 text-lg">0đ</div>
             </div>
-            <button onclick="submitOrder()" class="bg-green-700 w-full text-white rounded-xl p-4 font-bold">
+            <button onclick="submitOrder()" class="bg-green-700 hover:bg-green-800 transition w-full text-white rounded-xl p-4 font-bold tracking-wide shadow-lg">
                 XÁC NHẬN ĐẶT MÓN
             </button>
         </div>
     </div>
 
-    <div id="imageModal" onclick="closeImage()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5">
-        <img id="popupImage" class="max-w-full max-h-full rounded-2xl">
+    <div id="imageModal" onclick="closeImage()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5 cursor-zoom-out animate-[fade_0.2s_ease]">
+        <img id="popupImage" class="max-w-[95vw] max-h-[85vh] rounded-2xl object-contain border-2 border-white/10 shadow-2xl animate-[zoom_0.2s_ease-out]">
     </div>
 
-    <script>
-        let menu = []
-        // Cấu trúc giỏ hàng mới: cart[item.id] sẽ chứa một MẢNG các tùy chọn (options)
-        let cart = {}
+    <div id="successModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-xl">
+            <div class="text-5xl mb-3">🎉</div>
+            <div class="font-bold text-2xl text-green-700 mb-2">Đặt món thành công</div>
+            <p class="text-slate-600 mb-5">Cảm ơn bạn đã ủng hộ <b>Tiệm Nhà Mị</b><br>Quán đang chuẩn bị đơn của bạn ❤️</p>
+            <button onclick="closeSuccess()" class="bg-green-700 text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-green-800 transition">Đã hiểu</button>
+        </div>
+    </div>
 
+    <style>
+        @keyframes zoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+
+    <script>
+        let menu = [];
+        let cart = {};
+        const BACKEND_URL = "https://drink-order-backend.onrender.com";
+
+        // 1. TẢI MENU TỪ BACKEND
         async function loadMenu() {
             try {
-                const res = await fetch("https://drink-order-backend.onrender.com/api/menu")
-                menu = await res.json()
-                menu = menu.filter(x => x.status !== "Ngừng bán")
+                const res = await fetch(`${BACKEND_URL}/api/menu`);
+                menu = await res.json();
+                
+                // Lọc bỏ những món cấu hình ngừng bán
+                menu = menu.filter(x => x.status !== "Ngừng bán");
 
                 menu.forEach(item => {
                     if (!cart[item.id]) {
-                        // Mặc định ban đầu mỗi món có 1 option đầu tiên với số lượng bằng 0
                         cart[item.id] = [
                             { qty: 0, sugar: "100%", ice: "100%", note: "" }
-                        ]
+                        ];
                     }
-                })
-                render()
+                });
+                render();
             } catch (err) {
-                console.error("Lỗi tải menu:", err)
+                console.error("Lỗi tải menu hoặc không kết nối được backend:", err);
             }
         }
 
+        // 2. RENDER GIAO DIỆN KHÁCH HÀNG (ĐÃ FIX ĐỒNG BỘ ẢNH)
         function render() {
-            const box = document.getElementById("menu")
-            box.innerHTML = ""
+            const box = document.getElementById("menu");
+            box.innerHTML = "";
+
+            if (!menu || menu.length === 0) {
+                box.innerHTML = `<div class="text-center py-10 text-slate-400 italic">Quán đang cập nhật thực đơn, vui lòng quay lại sau!</div>`;
+                return;
+            }
 
             menu.forEach(item => {
-                const sold = item.status === "Hết hàng"
-                const options = cart[item.id]
+                const sold = item.status === "Hết hàng";
+                const options = cart[item.id] || [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
                 
-                // Tính tổng số lượng của món này dựa trên tất cả các option cộng lại
-                const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0)
+                const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0);
 
-                // Tự động nối link domain Render nếu lưu dạng đường dẫn tương đối /uploads/...
-                const fullImgUrl = item.image 
-                    ? (item.image.startsWith('/') ? 'https://drink-order-backend.onrender.com' + item.image : item.image) 
-                    : 'https://placehold.co/100';
+                // FIX KHÔNG BỊ TRÙNG LẶP LINK: Tự nhận biết thông minh dạng chuỗi link ảnh
+                let fullImgUrl = 'https://placehold.co/120';
+                if (item.image) {
+                    if (item.image.startsWith('http')) {
+                        fullImgUrl = item.image;
+                    } else {
+                        fullImgUrl = `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
+                    }
+                }
 
-                // Tạo HTML cho phần danh sách tùy chọn cấu hình Đường/Đá
-                let optionsHtml = ""
+                let optionsHtml = "";
                 if (!sold && totalItemQty > 0) {
                     options.forEach((opt, index) => {
-                        if (opt.qty <= 0) return; // Chỉ hiển thị cấu hình khi option đó có số lượng > 0
+                        if (opt.qty <= 0) return;
 
                         optionsHtml += `
                         <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 relative">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded">Tùy chọn #${index + 1}</span>
                                 <div class="flex items-center gap-2">
-                                    <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 hover:bg-slate-300 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
                                     <span class="text-xs font-bold font-mono">${opt.qty} ly</span>
-                                    <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 hover:bg-green-700 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <div class="text-xs font-medium text-slate-600 mb-1">Đường</div>
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white">
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white outline-none">
                                         <option ${opt.sugar === "100%" ? "selected" : ""}>100%</option>
                                         <option ${opt.sugar === "70%" ? "selected" : ""}>70%</option>
                                         <option ${opt.sugar === "50%" ? "selected" : ""}>50%</option>
@@ -122,7 +147,7 @@
                                 </div>
                                 <div>
                                     <div class="text-xs font-medium text-slate-600 mb-1">Đá</div>
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white">
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white outline-none">
                                         <option ${opt.ice === "100%" ? "selected" : ""}>100%</option>
                                         <option ${opt.ice === "70%" ? "selected" : ""}>70%</option>
                                         <option ${opt.ice === "50%" ? "selected" : ""}>50%</option>
@@ -131,35 +156,34 @@
                                     </select>
                                 </div>
                             </div>
-                            <textarea placeholder="Ghi chú riêng cho các ly này (Ví dụ: ít thạch, thêm trân châu...)" 
+                            <textarea placeholder="Ghi chú (Ví dụ: ít thạch, nhiều trân châu...)" 
                                       oninput="updateOptionField(${item.id}, ${index}, 'note', this.value)" 
-                                      class="border rounded-lg w-full mt-2 p-2 text-xs bg-white" rows="1">${opt.note || ""}</textarea>
-                        </div>`
-                    })
+                                      class="border rounded-lg w-full mt-2 p-2 text-xs bg-white outline-none focus:border-slate-400" rows="1">${opt.note || ""}</textarea>
+                        </div>`;
+                    });
 
-                    // Nút bấm thêm tùy chọn mới
                     optionsHtml += `
                     <button onclick="addNewOption(${item.id})" class="w-full mt-2 py-2 border border-dashed border-green-600 text-green-700 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors">
                         ➕ Thêm tùy chọn Đường / Đá khác cho món này
-                    </button>`
+                    </button>`;
                 }
 
                 box.innerHTML += `
                 <div class="bg-white rounded-2xl shadow border mb-3 p-3">
                     <div class="flex gap-3">
-                        <img src="${fullImgUrl}" onclick="showImage('${fullImgUrl}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border">
+                        <img src="${fullImgUrl}" onclick="showImage('${fullImgUrl}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/120'">
                         <div class="flex-1 flex flex-col justify-between">
                             <div>
-                                <div class="font-bold text-slate-800">${item.name}</div>
-                                <div class="text-red-500 font-semibold">${Number(item.price).toLocaleString("vi-VN")}đ</div>
+                                <div class="font-bold text-slate-800">${item.name || "Chưa đặt tên"}</div>
+                                <div class="text-red-500 font-semibold">${Number(item.price || 0).toLocaleString("vi-VN")}đ</div>
                             </div>
                             
-                            ${sold ? `<div class="text-red-500 font-bold text-sm">HẾT HÀNG</div>` : `
+                            ${sold ? `<div class="text-red-500 font-bold text-sm tracking-wide bg-red-50 px-2 py-1 rounded w-fit">HẾT HÀNG</div>` : `
                                 <div class="flex items-center gap-3 mt-1">
                                     <div class="flex items-center gap-2">
-                                        <button onclick="changeMainQty(${item.id}, -1)" class="bg-slate-200 w-7 h-7 rounded font-bold flex items-center justify-center">-</button>
+                                        <button onclick="changeMainQty(${item.id}, -1)" class="bg-slate-200 hover:bg-slate-300 w-7 h-7 rounded font-bold flex items-center justify-center">-</button>
                                         <div class="font-bold text-sm min-w-[15px] text-center">${totalItemQty}</div>
-                                        <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
+                                        <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 hover:bg-green-700 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
                                     </div>
                                     ${totalItemQty > 0 ? `<span class="text-xs text-slate-400 italic">(Đã chọn ${options.filter(o => o.qty > 0).length} vị)</span>` : ''}
                                 </div>
@@ -167,17 +191,17 @@
                         </div>
                     </div>
                     ${optionsHtml}
-                </div>`
-            })
+                </div>`;
+            });
 
-            calc()
+            calc();
         }
 
-        // Thay đổi số lượng ở nút bấm chính của món ăn
         function changeMainQty(id, n) {
-            const options = cart[id]
+            const options = cart[id];
+            if (!options) return;
             if (n > 0) {
-                options[options.length - 1].qty += 1
+                options[options.length - 1].qty += 1;
             } else {
                 for (let i = options.length - 1; i >= 0; i--) {
                     if (options[i].qty > 0) {
@@ -186,132 +210,65 @@
                     }
                 }
             }
-            render()
+            render();
         }
 
-        // Thay đổi số lượng tại từng cụm tùy chọn riêng biệt
         function changeOptionQty(id, index, n) {
-            cart[id][index].qty += n
-            if (cart[id][index].qty < 0) cart[id][index].qty = 0
-            render()
+            if (cart[id] && cart[id][index]) {
+                cart[id][index].qty += n;
+                if (cart[id][index].qty < 0) cart[id][index].qty = 0;
+                render();
+            }
         }
 
-        // Thêm một dòng tùy biến đá đường hoàn toàn mới cho sản phẩm
         function addNewOption(id) {
-            cart[id].push({ qty: 1, sugar: "100%", ice: "100%", note: "" })
-            render()
+            if (cart[id]) {
+                cart[id].push({ qty: 1, sugar: "100%", ice: "100%", note: "" });
+                render();
+            }
         }
 
-        // Cập nhật giá trị Select hoặc Textarea của từng phân loại cụ thể
         function updateOptionField(id, index, field, value) {
-            cart[id][index][field] = value
+            if (cart[id] && cart[id][index]) {
+                cart[id][index][field] = value;
+            }
         }
 
         function showImage(src) {
             if (!src) return;
-            document.getElementById("popupImage").src = src
-            document.getElementById("imageModal").classList.remove("hidden")
+            const modal = document.getElementById("imageModal");
+            const img = document.getElementById("popupImage");
+            if (modal && img) {
+                img.src = src;
+                modal.classList.remove("hidden");
+            }
         }
 
         function closeImage() {
-            document.getElementById("imageModal").classList.add("hidden")
+            document.getElementById("imageModal").classList.add("hidden");
         }
 
         function calc() {
-            let total = 0
+            let total = 0;
             menu.forEach(item => {
-                const options = cart[item.id]
+                const options = cart[item.id] || [];
                 options.forEach(opt => {
-                    total += item.price * opt.qty
-                })
-            })
-            document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ"
+                    total += (Number(item.price) || 0) * opt.qty;
+                });
+            });
+            document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ";
         }
 
         async function submitOrder() {
-            const customer = document.getElementById("customer").value.trim()
-            const phone = document.getElementById("phone").value.trim()
-            const note = document.getElementById("orderNote").value.trim()
+            const customer = document.getElementById("customer").value.trim();
+            const phone = document.getElementById("phone").value.trim();
+            const note = document.getElementById("orderNote").value.trim();
 
-            if (!customer) { alert("Nhập tên khách"); return; }
-            if (!phone) { alert("Nhập số điện thoại"); return; }
+            if (!customer) { alert("Vui lòng nhập tên khách hàng"); return; }
+            if (!phone) { alert("Vui lòng nhập số điện thoại"); return; }
 
-            const items = []
-            let total = 0
+            const items = [];
+            let total = 0;
 
             menu.forEach(item => {
-                const options = cart[item.id]
-                
-                options.forEach(opt => {
-                    if (opt.qty <= 0) return;
-
-                    items.push({
-                        name: item.name,
-                        qty: opt.qty,
-                        sugar: opt.sugar,
-                        ice: opt.ice,
-                        note: opt.note || ""
-                    })
-                    total += item.price * opt.qty
-                })
-            })
-
-            if (!items.length) { alert("Chưa chọn món"); return; }
-
-            const payload = {
-                customer_name: customer,
-                phone,
-                items: JSON.stringify(items),
-                note,
-                total,
-                status: "Đã nhận"
-            }
-
-            try {
-                const response = await fetch("https://drink-order-backend.onrender.com/api/orders", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                })
-
-                const data = await response.json()
-                if (!response.ok) { throw new Error(data.message) }
-
-                showSuccess()
-                document.getElementById("customer").value = ""
-                document.getElementById("phone").value = ""
-                document.getElementById("orderNote").value = ""
-
-                // Reset giỏ hàng
-                cart = {}
-                menu.forEach(item => {
-                    cart[item.id] = [{ qty: 0, sugar: "100%", ice: "100%", note: "" }]
-                })
-                render()
-            } catch (error) {
-                console.error(error)
-                alert("Lưu đơn thất bại")
-            }
-        }
-
-        function showSuccess() {
-            document.getElementById("successModal").classList.remove("hidden")
-        }
-
-        function closeSuccess() {
-            document.getElementById("successModal").classList.add("hidden")
-        }
-
-        loadMenu()
-    </script>
-
-    <div id="successModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5">
-        <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-xl">
-            <div class="text-5xl mb-3">🎉</div>
-            <div class="font-bold text-2xl text-green-700 mb-2">Đặt món thành công</div>
-            <p class="text-slate-600 mb-5">Cảm ơn bạn đã ủng hộ <b>Tiệm Nhà Mị</b><br>Quán đang chuẩn bị đơn của bạn ❤️</p>
-            <button onclick="closeSuccess()" class="bg-green-700 text-white px-6 py-3 rounded-xl font-bold w-full">Đã hiểu</button>
-        </div>
-    </div>
-</body>
-</html>
+                const
