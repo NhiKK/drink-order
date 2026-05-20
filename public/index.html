@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Tiệm Nhà Mị</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100">
+
+    <div class="max-w-md mx-auto bg-white min-h-screen pb-32">
+        <div class="bg-white shadow-sm">
+            <div class="relative">
+                <img src="/assets/banner.jpg" class="w-full h-40 object-cover">
+                <div class="absolute inset-0 bg-black/10"></div>
+            </div>
+
+            <div class="relative px-4 pb-4">
+                <div class="flex flex-col items-center -translate-y-10">
+                    <img src="/assets/logo.jpg" class="w-24 h-24 rounded-full border-4 border-white bg-white shadow-lg object-cover">
+                    <h1 class="text-3xl font-bold text-green-700 mt-2 text-center">Tiệm Nhà Mi</h1>
+                    <p class="text-pink-500 font-medium text-sm">Trà Ngon • Đậm Vị</p>
+                    <p class="text-slate-500 text-xs mt-1">📍 Gò Vấp • TP Hồ Chí Minh</p>
+                    <p class="text-green-600 font-bold text-sm">📞 0938 084 729</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="menu" class="p-3"></div>
+
+        <div class="p-4 space-y-3">
+            <input id="customer" placeholder="Tên khách hàng" class="border rounded-xl p-3 w-full">
+            <input id="phone" placeholder="Số điện thoại" class="border rounded-xl p-3 w-full">
+            <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn" class="border rounded-xl p-3 w-full"></textarea>
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 max-w-md mx-auto z-40">
+            <div class="flex justify-between mb-3">
+                <div>Tạm tính</div>
+                <div id="total" class="font-bold text-red-500 text-lg">0đ</div>
+            </div>
+            <button onclick="submitOrder()" class="bg-green-700 w-full text-white rounded-xl p-4 font-bold">
+                XÁC NHẬN ĐẶT MÓN
+            </button>
+        </div>
+    </div>
+
+    <div id="imageModal" onclick="closeImage()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5">
+        <img id="popupImage" class="max-w-full max-h-full rounded-2xl">
+    </div>
+
+    <script>
+        let menu = []
+        // Cấu trúc giỏ hàng mới: cart[item.id] sẽ chứa một MẢNG các tùy chọn (options)
+        let cart = {}
+
+        async function loadMenu() {
+            try {
+                const res = await fetch("/api/menu")
+                menu = await res.json()
+                menu = menu.filter(x => x.status !== "Ngừng bán")
+
+                menu.forEach(item => {
+                    if (!cart[item.id]) {
+                        // Mặc định ban đầu mỗi món có 1 option đầu tiên với số lượng bằng 0
+                        cart[item.id] = [
+                            { qty: 0, sugar: "100%", ice: "100%", note: "" }
+                        ]
+                    }
+                })
+                render()
+            } catch (err) {
+                console.error("Lỗi tải menu:", err)
+            }
+        }
+
+        function render() {
+            const box = document.getElementById("menu")
+            box.innerHTML = ""
+
+            menu.forEach(item => {
+                const sold = item.status === "Hết hàng"
+                const options = cart[item.id]
+                
+                // Tính tổng số lượng của món này dựa trên tất cả các option cộng lại
+                const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0)
+
+                // Tạo HTML cho phần danh sách tùy chọn cấu hình Đường/Đá
+                let optionsHtml = ""
+                if (!sold && totalItemQty > 0) {
+                    options.forEach((opt, index) => {
+                        if (opt.qty <= 0) return; // Chỉ hiển thị cấu hình khi option đó có số lượng > 0
+
+                        optionsHtml += `
+                        <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 relative">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded">Tùy chọn #${index + 1}</span>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
+                                    <span class="text-xs font-bold font-mono">${opt.qty} ly</span>
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <div class="text-xs font-medium text-slate-600 mb-1">Đường</div>
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white">
+                                        <option ${opt.sugar === "100%" ? "selected" : ""}>100%</option>
+                                        <option ${opt.sugar === "70%" ? "selected" : ""}>70%</option>
+                                        <option ${opt.sugar === "50%" ? "selected" : ""}>50%</option>
+                                        <option ${opt.sugar === "30%" ? "selected" : ""}>30%</option>
+                                        <option ${opt.sugar === "0%" ? "selected" : ""}>0%</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-slate-600 mb-1">Đá</div>
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-2 text-xs w-full bg-white">
+                                        <option ${opt.ice === "100%" ? "selected" : ""}>100%</option>
+                                        <option ${opt.ice === "70%" ? "selected" : ""}>70%</option>
+                                        <option ${opt.ice === "50%" ? "selected" : ""}>50%</option>
+                                        <option ${opt.ice === "30%" ? "selected" : ""}>30%</option>
+                                        <option ${opt.ice === "0%" ? "selected" : ""}>0%</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <textarea placeholder="Ghi chú riêng cho các ly này (Ví dụ: ít thạch, thêm trân châu...)" 
+                                      oninput="updateOptionField(${item.id}, ${index}, 'note', this.value)" 
+                                      class="border rounded-lg w-full mt-2 p-2 text-xs bg-white" rows="1">${opt.note || ""}</textarea>
+                        </div>`
+                    })
+
+                    // Nút bấm thần thánh: Cho phép khách thêm một form đường đá mới hoàn toàn cho cùng 1 loại nước
+                    optionsHtml += `
+                    <button onclick="addNewOption(${item.id})" class="w-full mt-2 py-2 border border-dashed border-green-600 text-green-700 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors">
+                        ➕ Thêm tùy chọn Đường / Đá khác cho món này
+                    </button>`
+                }
+
+                box.innerHTML += `
+                <div class="bg-white rounded-2xl shadow border mb-3 p-3">
+                    <div class="flex gap-3">
+                        <img src="${item.image || 'https://placehold.co/100'}" onclick="showImage('${item.image}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border">
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="font-bold text-slate-800">${item.name}</div>
+                                <div class="text-red-500 font-semibold">${Number(item.price).toLocaleString("vi-VN")}đ</div>
+                            </div>
+                            
+                            ${sold ? `<div class="text-red-500 font-bold text-sm">HẾT HÀNG</div>` : `
+                                <div class="flex items-center gap-3 mt-1">
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="changeMainQty(${item.id}, -1)" class="bg-slate-200 w-7 h-7 rounded font-bold flex items-center justify-center">-</button>
+                                        <div class="font-bold text-sm min-w-[15px] text-center">${totalItemQty}</div>
+                                        <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
+                                    </div>
+                                    ${totalItemQty > 0 ? `<span class="text-xs text-slate-400 italic">(Đã chọn ${options.filter(o => o.qty > 0).length} vị)</span>` : ''}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    ${optionsHtml}
+                </div>`
+            })
+
+            calc()
+        }
+
+        // Thay đổi số lượng ở nút bấm chính của món ăn
+        function changeMainQty(id, n) {
+            const options = cart[id]
+            if (n > 0) {
+                // Nếu tăng: Luôn cộng vào option đầu tiên hoặc option cuối cùng đang thao tác
+                options[options.length - 1].qty += 1
+            } else {
+                // Nếu giảm: Tìm vị trí option đang có số lượng > 0 từ dưới lên để trừ bớt
+                for (let i = options.length - 1; i >= 0; i--) {
+                    if (options[i].qty > 0) {
+                        options[i].qty -= 1;
+                        break;
+                    }
+                }
+            }
+            render()
+        }
+
+        // Thay đổi số lượng tại từng cụm tùy chọn riêng biệt
+        function changeOptionQty(id, index, n) {
+            cart[id][index].qty += n
+            if (cart[id][index].qty < 0) cart[id][index].qty = 0
+            render()
+        }
+
+        // Thêm một dòng tùy biến đá đường hoàn toàn mới cho sản phẩm
+        function addNewOption(id) {
+            cart[id].push({ qty: 1, sugar: "100%", ice: "100%", note: "" })
+            render()
+        }
+
+        // Cập nhật giá trị Select hoặc Textarea của từng phân loại cụ thể
+        function updateOptionField(id, index, field, value) {
+            cart[id][index][field] = value
+        }
+
+        function showImage(src) {
+            if (!src) return;
+            document.getElementById("popupImage").src = src
+            document.getElementById("imageModal").classList.remove("hidden")
+        }
+
+        function closeImage() {
+            document.getElementById("imageModal").classList.add("hidden")
+        }
+
+        function calc() {
+            let total = 0
+            menu.forEach(item => {
+                const options = cart[item.id]
+                options.forEach(opt => {
+                    total += item.price * opt.qty
+                })
+            })
+            document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ"
+        }
+
+        async function submitOrder() {
+            const customer = document.getElementById("customer").value.trim()
+            const phone = document.getElementById("phone").value.trim()
+            const note = document.getElementById("orderNote").value.trim()
+
+            if (!customer) { alert("Nhập tên khách"); return; }
+            if (!phone) { alert("Nhập số điện thoại"); return; }
+
+            const items = []
+            let total = 0
+
+            menu.forEach(item => {
+                const options = cart[item.id]
+                
+                options.forEach(opt => {
+                    if (opt.qty <= 0) return;
+
+                    // Đẩy từng nhóm tùy chọn có số lượng cụ thể lên server
+                    items.push({
+                        name: item.name,
+                        qty: opt.qty,
+                        sugar: opt.sugar,
+                        ice: opt.ice,
+                        note: opt.note || ""
+                    })
+                    total += item.price * opt.qty
+                })
+            })
+
+            if (!items.length) { alert("Chưa chọn món"); return; }
+
+            const payload = {
+                customer_name: customer,
+                phone,
+                items: JSON.stringify(items), // Chuỗi dữ liệu JSON hoàn hảo gồm nhiều cấu hình của cùng 1 món
+                note,
+                total,
+                status: "Đã nhận"
+            }
+
+            try {
+                const response = await fetch("/api/orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                })
+
+                const data = await response.json()
+                if (!response.ok) { throw new Error(data.message) }
+
+                showSuccess()
+                document.getElementById("customer").value = ""
+                document.getElementById("phone").value = ""
+                document.getElementById("orderNote").value = ""
+
+                // Reset giỏ hàng
+                cart = {}
+                menu.forEach(item => {
+                    cart[item.id] = [{ qty: 0, sugar: "100%", ice: "100%", note: "" }]
+                })
+                render()
+            } catch (error) {
+                console.error(error)
+                alert("Lưu đơn thất bại")
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById("successModal").classList.remove("hidden")
+        }
+
+        function closeSuccess() {
+            document.getElementById("successModal").classList.add("hidden")
+        }
+
+        loadMenu()
+    </script>
+
+    <div id="successModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-xl">
+            <div class="text-5xl mb-3">🎉</div>
+            <div class="font-bold text-2xl text-green-700 mb-2">Đặt món thành công</div>
+            <p class="text-slate-600 mb-5">Cảm ơn bạn đã ủng hộ <b>Tiệm Nhà Mị</b><br>Quán đang chuẩn bị đơn của bạn ❤️</p>
+            <button onclick="closeSuccess()" class="bg-green-700 text-white px-6 py-3 rounded-xl font-bold w-full">Đã hiểu</button>
+        </div>
+    </div>
+</body>
+</html>
