@@ -8,46 +8,33 @@
     <style>
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
 
-        /* CẤU HÌNH BIẾN IN ẤN CHUẨN - CHỐNG BỊ TRANG TRẮNG */
         @media print {
-            body > *:not(#print-section) {
-                display: none !important;
-            }
+            body > *:not(#print-section) { display: none !important; }
             #print-section {
                 display: block !important;
                 visibility: visible !important;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                max-width: 140mm;
-                padding: 10px;
-                background: white;
-                color: black;
+                position: absolute; left: 0; top: 0; width: 100%;
+                max-width: 140mm; padding: 10px; background: white; color: black;
             }
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
 
     <div class="max-w-6xl mx-auto p-4 md:p-6 pb-24">
         
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-200">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-200">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">📋 Hệ thống Quản lý Đơn hàng</h1>
-                <p class="text-slate-500 text-xs mt-0.5">Theo dõi, chế biến và in hóa đơn thanh toán realtime</p>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900">Danh Sách Đơn Hàng</h1>
             </div>
-            <div class="flex items-center gap-2 self-stretch sm:self-auto">
-                <button onclick="loadOrders()" class="flex-1 sm:flex-none bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm hover:bg-slate-700 active:scale-95 transition">
-                    🔄 Làm mới đơn
-                </button>
-            </div>
+            <button onclick="loadOrders()" class="bg-slate-900 text-white font-medium text-xs px-4 py-2 rounded-lg hover:bg-slate-800 active:scale-95 transition">
+                🔄 Làm mới
+            </button>
         </div>
 
-        <div class="space-y-4" id="orderGroupsContainer">
-            </div>
+        <div class="space-y-3" id="orderGroupsContainer"></div>
 
     </div>
 
@@ -55,117 +42,109 @@
 
     <script>
         let allOrders = [];
-        // Cấu hình các nhóm trạng thái: tên nhóm, các trạng thái thuộc nhóm, và mặc định đóng hay mở
+        
+        // Cấu hình nhóm: Loại bỏ sạch màu sắc sặc sỡ, dùng tông xám/đen sang trọng
         const GROUP_CONFIGS = [
-            { id: "group-new", title: "💥 ĐƠN HÀNG MỚI (CHỜ LÀM)", statuses: ["Đã nhận", "Đã tiếp nhận"], defaultOpen: true, headerBg: "bg-amber-500", textBg: "text-white" },
-            { id: "group-processing", title: "⏳ ĐƠN ĐANG CHẾ BIẾN", statuses: ["Đang làm", "Đang pha chế"], defaultOpen: true, headerBg: "bg-blue-600", textBg: "text-white" },
-            { id: "group-completed", title: "✅ ĐƠN ĐÃ HOÀN TẤT", statuses: ["Đã giao", "Hoàn tất"], defaultOpen: false, headerBg: "bg-slate-300", textBg: "text-slate-700" },
-            { id: "group-cancelled", title: "❌ ĐƠN ĐÃ HỦY", statuses: ["Đã hủy"], defaultOpen: false, headerBg: "bg-slate-200", textBg: "text-slate-500" }
+            { id: "group-new", title: "💥 ĐƠN MỚI (CHỜ LÀM)", statuses: ["Đã nhận", "Đã tiếp nhận"], defaultOpen: true, headerBg: "bg-slate-900", textBg: "text-white" },
+            { id: "group-processing", title: "⏳ ĐANG PHA CHẾ", statuses: ["Đang làm", "Đang pha chế"], defaultOpen: true, headerBg: "bg-slate-700", textBg: "text-white" },
+            { id: "group-completed", title: "✅ ĐÃ HOÀN TẤT", statuses: ["Đã giao", "Hoàn tất"], defaultOpen: false, headerBg: "bg-slate-200", textBg: "text-slate-700" },
+            { id: "group-cancelled", title: "❌ ĐÃ HỦY", statuses: ["Đã hủy"], defaultOpen: false, headerBg: "bg-slate-100", textBg: "text-slate-400" }
         ];
 
-        // Trạng thái lưu trữ việc đóng/mở của các nhóm (giữ trạng thái khi reload)
         let groupsOpenState = {};
-        GROUP_CONFIGS.forEach(g => {
-            groupsOpenState[g.id] = g.defaultOpen;
-        });
+        GROUP_CONFIGS.forEach(g => { groupsOpenState[g.id] = g.defaultOpen; });
 
-        // 1. TẢI TOÀN BỘ ĐƠN HÀNG TỪ DATABASE
         async function loadOrders() {
             try {
                 const res = await fetch("https://drink-order-backend.onrender.com/api/orders");
                 allOrders = await res.json();
                 renderGroupedOrders();
             } catch (err) {
-                console.error("Lỗi tải đơn hàng:", err);
+                console.error("Lỗi tải đơn:", err);
             }
         }
 
-        // 2. PHÂN LOẠI VÀ XỬ LÝ GIAO DIỆN GOM NHÓM
         function renderGroupedOrders() {
             const container = document.getElementById("orderGroupsContainer");
             container.innerHTML = "";
 
             GROUP_CONFIGS.forEach(group => {
-                // Lọc đơn hàng thuộc nhóm trạng thái hiện tại
                 const ordersInGroup = allOrders.filter(order => group.statuses.includes(order.status));
                 const isOpen = groupsOpenState[group.id];
 
                 let groupHtml = `
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div onclick="toggleGroup('${group.id}')" class="flex justify-between items-center px-4 py-3.5 ${group.headerBg} ${group.textBg} cursor-pointer select-none transition hover:opacity-95">
-                            <span class="font-bold text-sm tracking-wide">${group.title} (${ordersInGroup.length})</span>
-                            <span class="text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}">▼</span>
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div onclick="toggleGroup('${group.id}')" class="flex justify-between items-center px-4 py-3 ${group.headerBg} ${group.textBg} cursor-pointer select-none text-xs font-bold tracking-wider">
+                            <span>${group.title} (${ordersInGroup.length})</span>
+                            <span class="text-[10px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}">▼</span>
                         </div>
                         
-                        <div id="${group.id}" class="${isOpen ? 'block' : 'hidden'} p-4 bg-slate-50/50 space-y-3">
+                        <div id="${group.id}" class="${isOpen ? 'block' : 'hidden'} p-3 bg-[#fdfdfd] space-y-2">
                 `;
 
                 if (ordersInGroup.length === 0) {
-                    groupHtml += `<div class="text-center text-xs text-slate-400 py-6 italic bg-white rounded-xl border border-dashed">Hiện tại chưa có đơn hàng nào thuộc mục này.</div>`;
+                    groupHtml += `<div class="text-center text-xs text-slate-400 py-4 italic">Không có đơn hàng.</div>`;
                 } else {
                     ordersInGroup.forEach(order => {
                         let parsedItems = [];
-                        try {
-                            parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                        } catch(e) { 
-                            parsedItems = []; 
-                        }
+                        try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; } catch(e) {}
 
-                        // Tạo danh sách món uống
+                        // LÀM NỔI BẬT MÓN UỐNG: Chữ đen tuyền bôi đậm siêu to, số lượng phóng đại cách biệt
                         let itemsHtml = parsedItems.map(it => `
-                            <div class="flex justify-between text-xs items-start border-b border-slate-100 pb-1.5 last:border-0 last:pb-0">
-                                <div class="flex-1 pr-2">
-                                    <span class="font-bold text-slate-800">${it.name}</span>
-                                    <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap gap-x-2">
-                                        <span>🍬 ${it.sugar || '100%'}</span>
-                                        <span>❄️ ${it.ice || '100%'}</span>
+                            <div class="flex justify-between items-center border-b border-slate-100 py-2 last:border-0 last:py-0">
+                                <div class="flex-1 pr-4">
+                                    <div class="text-base font-extrabold text-black uppercase tracking-tight">${it.name}</div>
+                                    <div class="text-xs text-slate-500 mt-0.5 font-medium">
+                                        🍭 ${it.sugar || '100%'} đường &nbsp;|&nbsp; ❄️ ${it.ice || '100%'} đá
                                     </div>
                                 </div>
-                                <span class="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">x${it.qty}</span>
+                                <div class="text-lg font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-md border border-slate-200 font-mono">
+                                    x${it.qty}
+                                </div>
                             </div>
                         `).join("");
 
-                        // Định dạng ngày giờ dạng tinh gọn
                         let timeString = "";
                         if(order.created_at) {
                             const date = new Date(order.created_at);
-                            timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'}) + " - " + date.toLocaleDateString("vi-VN", {day: '2-digit', month: '2-digit'});
+                            timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'});
                         }
 
                         groupHtml += `
-                            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xl shadow-slate-100/50 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                            <div class="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 
-                                <div class="md:col-span-3 space-y-1">
-                                    <div class="flex items-center gap-1.5">
+                                <div class="md:w-1/4 space-y-0.5">
+                                    <div class="flex items-center gap-2">
                                         <span class="text-xs font-mono font-bold text-slate-400">#${order.id}</span>
-                                        <h3 class="font-bold text-sm text-slate-800 truncate">${order.customer_name}</h3>
+                                        <h3 class="font-bold text-sm text-slate-900 truncate">${order.customer_name}</h3>
                                     </div>
-                                    <p class="text-xs font-medium text-slate-600">📞 ${order.phone}</p>
-                                    <p class="text-[10px] text-slate-400 font-mono">${timeString}</p>
+                                    <p class="text-xs text-slate-600 font-medium">📞 ${order.phone}</p>
+                                    <p class="text-[10px] text-slate-400 font-mono">Giờ đặt: ${timeString}</p>
                                 </div>
 
-                                <div class="md:col-span-4 bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-2">
+                                <div class="md:w-5/12 bg-white p-3 rounded-lg border border-slate-300/80 space-y-2.5 shadow-sm">
                                     ${itemsHtml}
-                                    ${order.note ? `<div class="text-[11px] bg-red-50 text-red-700 p-1.5 rounded border border-red-100 font-medium">📌 Ghi chú: ${order.note}</div>` : ""}
+                                    ${order.note ? `<div class="text-xs bg-slate-100 text-slate-800 p-2 rounded border border-slate-200 font-bold mt-1">📌 GHI CHÚ: ${order.note}</div>` : ""}
                                 </div>
 
-                                <div class="md:col-span-2 text-left md:text-center">
-                                    <span class="text-[11px] block font-medium text-slate-400 md:mb-0.5">Tổng tiền</span>
-                                    <span class="font-bold text-red-600 text-sm font-mono">${Number(order.total).toLocaleString("vi-VN")}đ</span>
-                                </div>
-
-                                <div class="md:col-span-3 flex items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                <div class="md:w-1/3 flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3">
+                                    <div class="text-left md:text-right">
+                                        <span class="text-[10px] block font-medium text-slate-400">Tổng thanh toán</span>
+                                        <span class="font-bold text-slate-900 text-base font-mono">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                                    </div>
                                     
-                                    <select onchange="updateStatus(${order.id}, this.value)" class="text-xs font-semibold bg-slate-100 border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-slate-400 w-36 cursor-pointer">
-                                        <option value="Đã nhận" ${order.status === "Đã nhận" ? "selected" : ""}>💥 Chờ làm</option>
-                                        <option value="Đang làm" ${order.status === "Đang làm" ? "selected" : ""}>⏳ Đang chế biến</option>
-                                        <option value="Đã giao" ${order.status === "Đã giao" ? "selected" : ""}>✅ Đã giao món</option>
-                                        <option value="Đã hủy" ${order.status === "Đã hủy" ? "selected" : ""}>❌ Hủy đơn hàng</option>
-                                    </select>
+                                    <div class="flex items-center gap-2">
+                                        <select onchange="updateStatus(${order.id}, this.value)" class="text-xs font-bold bg-white border border-slate-300 rounded-md p-1.5 outline-none focus:border-slate-500 w-32 cursor-pointer">
+                                            <option value="Đã nhận" ${order.status === "Đã nhận" ? "selected" : ""}>💥 Chờ làm</option>
+                                            <option value="Đang làm" ${order.status === "Đang làm" ? "selected" : ""}>⏳ Chế biến</option>
+                                            <option value="Đã giao" ${order.status === "Đã giao" ? "selected" : ""}>✅ Đã xong</option>
+                                            <option value="Đã hủy" ${order.status === "Đã hủy" ? "selected" : ""}>❌ Hủy đơn</option>
+                                        </select>
 
-                                    <button onclick="printBill(${order.id})" class="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs px-3 py-2 rounded-lg transition active:scale-95 flex items-center gap-1">
-                                        🖨️ In
-                                    </button>
+                                        <button onclick="printBill(${order.id})" class="bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 font-bold text-xs px-2.5 py-1.5 rounded-md transition active:scale-95 flex items-center gap-1">
+                                            🖨️ In
+                                        </button>
+                                    </div>
                                 </div>
 
                             </div>
@@ -178,13 +157,11 @@
             });
         }
 
-        // 3. ĐÓNG MỞ THU GỌN DANH MỤC
         function toggleGroup(groupId) {
             groupsOpenState[groupId] = !groupsOpenState[groupId];
             renderGroupedOrders();
         }
 
-        // 4. CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG LÊN SERVER
         async function updateStatus(id, newStatus) {
             try {
                 const response = await fetch(`https://drink-order-backend.onrender.com/api/orders/${id}`, {
@@ -192,17 +169,10 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ status: newStatus })
                 });
-                if (response.ok) {
-                    await loadOrders(); // Tải lại giao diện đồng bộ ngay lập tức
-                } else {
-                    alert("Cập nhật trạng thái đơn thất bại!");
-                }
-            } catch (err) {
-                console.error(err);
-            }
+                if (response.ok) { await loadOrders(); }
+            } catch (err) { console.error(err); }
         }
 
-        // 5. IN HÓA ĐƠN ĐƠN HÀNG (GIỮ NGUYÊN KHỔ IN CHUẨN CỦA BẠN)
         function printBill(id) {
             const order = allOrders.find(x => x.id === id);
             if (!order) return;
@@ -216,7 +186,7 @@
                 return `
                     <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 4px;">
                         <div style="flex: 1; padding-right: 10px;">
-                            <b style="color:#000;">${it.name}</b>
+                            <b style="color:#000; text-transform: uppercase;">${it.name}</b>
                             <div style="font-size: 11px; color: #555; margin-top: 2px;">Đường: ${it.sugar || '100%'} | Đá: ${it.ice || '100%'}</div>
                         </div>
                         <div style="width: 40px; text-align: right; font-weight: bold; font-size: 14px;">${it.qty}</div>
@@ -256,24 +226,19 @@
 
                 <div style="text-align: right; font-size: 13px; line-height: 1.6; border-top: 1px solid #333; padding-top: 6px;">
                     <div>Tổng số lượng: <b>${totalQty} ly</b></div>
-                    <div style="font-size: 16px; margin-top: 4px;">Thành tiền: <b style="color: #dc2626;">${Number(order.total).toLocaleString("vi-VN")}đ</b></div>
+                    <div style="font-size: 16px; margin-top: 4px;">Thành tiền: <b style="color: #000;">${Number(order.total).toLocaleString("vi-VN")}đ</b></div>
                 </div>
 
                 <div style="text-align: center; margin-top: 25px; font-size: 11px; font-style: italic; color: #555; border-top: 1px dashed #ccc; padding-top: 10px;">
                     Cảm ơn quý khách đã ủng hộ Tiệm Nhà Mị! ❤️
                 </div>
             `;
-
             window.print();
         }
 
-        // TỰ ĐỘNG CHẠY TẢI ĐƠN HÀNG KHI MỞ TRANG LÊN
         loadMenu();
-
-        // Hàm bao bọc chạy ban đầu
         function loadMenu() {
             loadOrders();
-            // Cứ sau 30 giây hệ thống tự động ngầm làm mới danh sách đơn một lần để nhận đơn mới từ khách
             setInterval(loadOrders, 30000);
         }
     </script>
