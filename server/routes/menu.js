@@ -45,16 +45,18 @@ router.post(
                         name,
                         price,
                         image,
-                        status
+                        status,
+                        category
                     )
-                    VALUES ($1, $2, $3, $4, $5)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     `,
                     [
                         item.id,
                         item.name,
                         item.price,
                         item.image,
-                        item.status
+                        item.status,
+                        item.category || "Khác"
                     ]
                 )
             }
