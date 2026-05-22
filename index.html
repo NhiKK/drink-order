@@ -76,7 +76,7 @@
         let cart = {};
         const BACKEND_URL = "https://drink-order-backend.onrender.com";
 
-        // TỰ ĐỘNG ĐỔ THÔNG TIN CŨ VÀ THEO DÕI ĐƠN KHI VÀO LẠI TRANG
+        // TỰ ĐỘNG THEO DÕI ĐƠN KHI TRANg ĐƯỢC TẢI
         window.addEventListener('DOMContentLoaded', () => {
             const savedName = localStorage.getItem("customer_name");
             const savedPhone = localStorage.getItem("customer_phone");
@@ -88,7 +88,7 @@
             }
         });
 
-        // HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG + HIỂN THỊ MÓN ĂN CHI TIẾT
+        // HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG
         async function trackOrders(phone) {
             if (!phone) return;
             try {
@@ -103,25 +103,25 @@
                     orderListStatus.innerHTML = "";
                     
                     orders.forEach(order => {
-                        // Xác định màu sắc hiển thị cho các trạng thái đơn hàng khác nhau
+                        // Thiết lập màu sắc trạng thái giống thiết kế cũ
                         let statusColor = "bg-amber-100 text-amber-800 border-amber-200";
                         if (order.status === "Đang làm") statusColor = "bg-blue-100 text-blue-800 border-blue-200";
-                        if (order.status === "Đã giao") statusColor = "bg-green-100 text-green-800 border-green-200";
+                        if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
-                        // Giải nén danh sách món nước được lưu trong chuỗi JSON string
+                        // Giải nén mảng danh sách các ly nước từ chuỗi JSON
                         let itemsHtml = "";
                         try {
                             const parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
                             if (Array.isArray(parsedItems)) {
                                 parsedItems.forEach(item => {
                                     itemsHtml += `
-                                        <div class="text-xs text-slate-600 bg-slate-50/60 p-1.5 rounded border border-slate-100 flex justify-between items-start">
+                                        <div class="text-xs text-slate-600 bg-slate-50/80 p-2 rounded border border-slate-100 flex justify-between items-start">
                                             <div>
                                                 <span class="font-bold text-slate-800">${item.name}</span>
                                                 <span class="text-slate-400 mx-1">|</span>
                                                 <span class="text-slate-500 font-medium text-[11px]">Đường: ${item.sugar} • Đá: ${item.ice}</span>
-                                                ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghichu: ${item.note}</div>` : ''}
+                                                ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghi chú: ${item.note}</div>` : ''}
                                             </div>
                                             <span class="font-bold text-green-700 font-mono bg-green-50 px-1.5 py-0.5 rounded text-[11px]">${item.qty} ly</span>
                                         </div>
@@ -129,23 +129,28 @@
                                 });
                             }
                         } catch (e) {
-                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể phân tích danh sách món ăn</div>`;
+                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể tải danh sách món ăn</div>`;
                         }
 
+                        // Vẽ cấu hình HTML có class cursor-pointer và hàm click để bật/tắt xổ dữ liệu
                         orderListStatus.innerHTML += `
-                            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <div>
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div onclick="toggleOrderDetails(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition active:bg-slate-100">
+                                    <div class="flex items-center gap-1">
                                         <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
-                                        <span class="text-slate-300 mx-1.5">|</span>
+                                        <span class="text-slate-300 mx-1">|</span>
                                         <span class="font-bold text-red-500 text-sm">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                                        <span class="text-slate-400 text-[10px] ml-1">▼</span>
                                     </div>
                                     <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">
                                         ${order.status}
                                     </span>
                                 </div>
-                                <div class="space-y-1">
+                                
+                                <div id="details-${order.id}" class="hidden p-3 pt-0 border-t border-slate-100 bg-slate-50/30 space-y-1.5">
+                                    <div class="text-[11px] text-slate-400 font-medium mb-1">Chi tiết món đã đặt:</div>
                                     ${itemsHtml}
+                                    ${order.note ? `<div class="text-xs text-slate-500 bg-amber-50/50 p-2 rounded border border-dashed border-amber-200 mt-2"><b>Ghi chú đơn:</b> ${order.note}</div>` : ''}
                                 </div>
                             </div>
                         `;
@@ -158,12 +163,20 @@
             }
         }
 
+        // HÀM XỬ LÝ ẨN/HIỆN THÔNG TIN CHI TIẾT KHI CLICK
+        function toggleOrderDetails(orderId) {
+            const detailBlock = document.getElementById(`details-${orderId}`);
+            if (detailBlock) {
+                detailBlock.classList.toggle("hidden");
+            }
+        }
+
         function refreshTracking() {
             const phone = document.getElementById("phone").value.trim();
             if (phone) trackOrders(phone);
         }
 
-        // 1. TẢI MENU TỪ BACKEND
+        // TẢI MENU TỪ BACKEND
         async function loadMenu() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/menu`);
@@ -181,15 +194,10 @@
             }
         }
 
-        // 2. RENDER GIAO DIỆN KHÁCH HÀNG CHỌN MÓN
+        // RENDER GIAO DIỆN CHỌN MÓN
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
-
-            if (!menu || menu.length === 0) {
-                box.innerHTML = `<div class="text-center py-10 text-slate-400 italic">Quán đang cập nhật thực đơn!</div>`;
-                return;
-            }
 
             menu.forEach(item => {
                 const sold = item.status === "Hết hàng";
@@ -211,9 +219,9 @@
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded">Tùy chọn #${index + 1}</span>
                                 <div class="flex items-center gap-2">
-                                    <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 hover:bg-slate-300 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
                                     <span class="text-xs font-bold font-mono">${opt.qty} ly</span>
-                                    <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 hover:bg-green-700 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
+                                    <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
                                 </div>
                             </div>
 
@@ -259,12 +267,12 @@
                                 <div class="text-red-500 font-semibold">${Number(item.price || 0).toLocaleString("vi-VN")}đ</div>
                             </div>
                             
-                            ${sold ? `<div class="text-red-500 font-bold text-sm tracking-wide bg-red-50 px-2 py-1 rounded w-fit">HẾT HÀNG</div>` : `
+                            ${sold ? `<div class="text-red-500 font-bold text-sm bg-red-50 px-2 py-1 rounded w-fit">HẾT HÀNG</div>` : `
                                 <div class="flex items-center gap-3 mt-1">
                                     <div class="flex items-center gap-2">
-                                        <button onclick="changeMainQty(${item.id}, -1)" class="bg-slate-200 hover:bg-slate-300 w-7 h-7 rounded font-bold flex items-center justify-center">-</button>
+                                        <button onclick="changeMainQty(${item.id}, -1)" class="bg-slate-200 w-7 h-7 rounded font-bold flex items-center justify-center">-</button>
                                         <div class="font-bold text-sm min-w-[15px] text-center">${totalItemQty}</div>
-                                        <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 hover:bg-green-700 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
+                                        <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
                                     </div>
                                 </div>
                             `}
@@ -332,7 +340,7 @@
             document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ";
         }
 
-        // HÀM XỬ LÝ ĐẶT ĐƠN HÀNG MỚI ĐỘC LẬP
+        // GỬI ĐƠN HÀNG MỚI
         async function submitOrder() {
             const customer = document.getElementById("customer").value.trim();
             const phone = document.getElementById("phone").value.trim();
@@ -402,95 +410,6 @@
         function showSuccess() { document.getElementById("successModal").classList.remove("hidden"); }
         function closeSuccess() { document.getElementById("successModal").classList.add("hidden"); }
 
-
-        // 1. TỰ ĐỘNG ĐỔ THÔNG TIN CŨ VÀ THEO DÕI ĐƠN KHI KHÁCH VÀO LẠI TRANG
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedName = localStorage.getItem("customer_name");
-            const savedPhone = localStorage.getItem("customer_phone");
-            
-            if (savedName) document.getElementById("customer").value = savedName;
-            if (savedPhone) {
-                document.getElementById("phone").value = savedPhone;
-                trackOrders(savedPhone);
-            }
-        });
-
-        // 2. HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG + BÓC TÁCH HIỂN THỊ MÓN ĂN CHI TIẾT
-        async function trackOrders(phone) {
-            if (!phone) return;
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/orders/track/${phone}`);
-                const orders = await res.json();
-                
-                const trackingArea = document.getElementById("trackingArea");
-                const orderListStatus = document.getElementById("orderListStatus");
-                
-                if (orders && orders.length > 0) {
-                    trackingArea.classList.remove("hidden");
-                    orderListStatus.innerHTML = "";
-                    
-                    orders.forEach(order => {
-                        // Thiết lập màu sắc trực quan tương ứng với từng trạng thái
-                        let statusColor = "bg-amber-100 text-amber-800 border-amber-200";
-                        if (order.status === "Đang làm") statusColor = "bg-blue-100 text-blue-800 border-blue-200";
-                        if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
-                        if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
-
-                        // Giải nén mảng danh sách món nước từ chuỗi JSON string được lưu trong Database
-                        let itemsHtml = "";
-                        try {
-                            const parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                            if (Array.isArray(parsedItems)) {
-                                parsedItems.forEach(item => {
-                                    itemsHtml += `
-                                        <div class="text-xs text-slate-600 bg-slate-50/80 p-2 rounded border border-slate-100 flex justify-between items-start">
-                                            <div>
-                                                <span class="font-bold text-slate-800">${item.name}</span>
-                                                <span class="text-slate-400 mx-1">|</span>
-                                                <span class="text-slate-500 font-medium text-[11px]">Đường: ${item.sugar} • Đá: ${item.ice}</span>
-                                                ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghi chú: ${item.note}</div>` : ''}
-                                            </div>
-                                            <span class="font-bold text-green-700 font-mono bg-green-50 px-1.5 py-0.5 rounded text-[11px]">${item.qty} ly</span>
-                                        </div>
-                                    `;
-                                });
-                            }
-                        } catch (e) {
-                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể tải danh sách món ăn</div>`;
-                        }
-
-                        orderListStatus.innerHTML += `
-                            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <div>
-                                        <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
-                                        <span class="text-slate-300 mx-1.5">|</span>
-                                        <span class="font-bold text-red-500 text-sm">${Number(order.total).toLocaleString("vi-VN")}đ</span>
-                                    </div>
-                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">
-                                        ${order.status}
-                                    </span>
-                                </div>
-                                <div class="space-y-1">
-                                    ${itemsHtml}
-                                </div>
-                            </div>
-                        `;
-                    });
-                } else {
-                    trackingArea.classList.add("hidden");
-                }
-            } catch (err) {
-                console.error("Lỗi đồng bộ trạng thái đơn hàng:", err);
-            }
-        }
-
-        function refreshTracking() {
-            const phone = document.getElementById("phone").value.trim();
-            if (phone) trackOrders(phone);
-        }
         loadMenu();
     </script>
 </body>
-
-</html>
