@@ -1,8 +1,47 @@
 const express = require("express")
 const router = express.Router()
-const db = require("../db") 
+const db = require("../db") // Đảm bảo đường dẫn tới file kết nối database của bạn chính xác
+
+// ==========================================
+// THÀNH PHẦN 1: CÁC API DÀNH CHO TRANG ADMIN
+// ==========================================
+
+// 1. LẤY DANH SÁCH TẤT CẢ ĐƠN HÀNG (ĐỂ HIỂN THỊ TRÊN TRANG ADMIN)
+router.get("/", async (req, res) => {
+    try {
+        const result = await db.query("SELECT * FROM orders ORDER BY id DESC")
+        const orders = result.rows || result
+        res.json(orders) 
+    } catch (err) {
+        console.error("Lỗi khi lấy danh sách đơn hàng:", err.message)
+        res.status(500).json({ success: false, error: err.message })
+    }
+})
+
+// 2. CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (KHI ADMIN BẤM ĐỔI TRẠNG THÁI)
+router.put("/:id", async (req, res) => {
+    try {
+        const id = req.params.id
+        const { status } = req.body
+
+        await db.query(
+            `UPDATE orders SET status = $1 WHERE id = $2`,
+            [status, id]
+        )
+
+        res.json({ success: true })
+    } catch (err) {
+        console.error("Lỗi cập nhật trạng thái đơn:", err.message)
+        res.status(500).json({ success: false, error: err.message })
+    }
+})
 
 
+// ==========================================
+// THÀNH PHẦN 2: CÁC API DÀNH CHO KHÁCH HÀNG
+// ==========================================
+
+// 3. TIẾP NHẬN ĐƠN HÀNG MỚI TỪ MẶT KHÁCH (ĐÃ LỌC SẠCH CỘT DETAIL)
 router.post("/", async (req, res) => {
     try {
         const {
@@ -51,6 +90,7 @@ router.post("/", async (req, res) => {
     }
 })
 
+// 4. TRA CỨU TIẾN ĐỘ ĐƠN HÀNG (DÀNH CHO KHÁCH THEO DÕI QUA SĐT)
 router.get("/track/:phone", async (req, res) => {
     try {
         const phone = req.params.phone
@@ -66,5 +106,5 @@ router.get("/track/:phone", async (req, res) => {
     }
 })
 
-
+// BẮT BUỘC PHẢI CÓ ĐỂ SERVER CHẠY ĐƯỢC
 module.exports = router
