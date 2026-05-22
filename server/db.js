@@ -44,7 +44,9 @@ async function createTablesIfNotExist() {
         status VARCHAR(50) DEFAULT 'Còn bán'
       );
     `);
-
+    await pool.query(`
+    ALTER TABLE menu ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'Khác';
+    `);
     // 2. Tạo bảng orders lưu đơn hàng
     await pool.query(`
       CREATE TABLE IF NOT EXISTS orders (
@@ -66,14 +68,8 @@ async function createTablesIfNotExist() {
         );
     `);
 
-    // 2. Chèn các danh mục mẫu mặc định (nếu chưa có)
-    await pool.query(`
-        INSERT INTO categories (name) 
-        VALUES ('Cà phê'), ('Trà sữa'), ('Nước ép') 
-        ON CONFLICT (name) DO NOTHING;
-    `);
 
-    console.log("=== ĐỒNG BỘ DB: Bảng 'categories' đã sẵn sàng! ===");
+    console.log("=== ĐỒNG BỘ DB: BỔ SUNG category! ===");
   } catch (err) {
     console.error("=== [DATABASE ERROR] Lỗi tự động tạo bảng: ===", err);
   }
