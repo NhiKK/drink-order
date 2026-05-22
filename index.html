@@ -34,8 +34,7 @@
                     <h3 class="font-bold text-green-800 flex items-center gap-1">📋 Đơn hàng của bạn</h3>
                     <button onclick="refreshTracking()" class="text-xs text-green-700 bg-white border px-2 py-1 rounded-lg shadow-sm active:scale-95 transition">🔄 Làm mới</button>
                 </div>
-                <div id="orderListStatus" class="space-y-3">
-                    </div>
+                <div id="orderListStatus" class="space-y-3"></div>
             </div>
         </div>
 
@@ -76,7 +75,6 @@
         let cart = {};
         const BACKEND_URL = "https://drink-order-backend.onrender.com";
 
-        // TỰ ĐỘNG THEO DÕI ĐƠN KHI TRANg ĐƯỢC TẢI
         window.addEventListener('DOMContentLoaded', () => {
             const savedName = localStorage.getItem("customer_name");
             const savedPhone = localStorage.getItem("customer_phone");
@@ -88,11 +86,10 @@
             }
         });
 
-        // HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG
         async function trackOrders(phone) {
             if (!phone) return;
             try {
-                const res = await fetch(`https://drink-order-backend.onrender.com/api/orders/track/${phone}`);
+                const res = await fetch(`${BACKEND_URL}/api/orders/track/${phone}`);
                 const orders = await res.json();
                 
                 const trackingArea = document.getElementById("trackingArea");
@@ -103,13 +100,11 @@
                     orderListStatus.innerHTML = "";
                     
                     orders.forEach(order => {
-                        // Định dạng màu sắc trạng thái đơn hàng
                         let statusColor = "bg-amber-100 text-amber-800 border-amber-200";
                         if (order.status === "Đang làm") statusColor = "bg-blue-100 text-blue-800 border-blue-200";
                         if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
-                        // Duyệt qua chuỗi JSON của cột items để bóc tách thông tin món ăn
                         let itemsHtml = "";
                         if (order.items) {
                             try {
@@ -136,7 +131,6 @@
                             itemsHtml = `<div class="text-xs text-slate-400 italic">Không có dữ liệu món ăn trả về từ server</div>`;
                         }
 
-                        // Đổ dữ liệu ra cấu trúc thẻ Accordion (Click tiêu đề để đóng/mở nội dung bên dưới)
                         orderListStatus.innerHTML += `
                             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-2">
                                 <div onclick="toggleOrderDetails(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors">
@@ -166,7 +160,6 @@
             }
         }
 
-        // HÀM ẨN/HIỆN NỘI DUNG CHI TIẾT
         function toggleOrderDetails(orderId) {
             const detailBlock = document.getElementById(`details-${orderId}`);
             if (detailBlock) {
@@ -179,7 +172,6 @@
             if (phone) trackOrders(phone);
         }
 
-        // TẢI MENU TỪ BACKEND
         async function loadMenu() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/menu`);
@@ -197,7 +189,6 @@
             }
         }
 
-        // RENDER GIAO DIỆN CHỌN MÓN
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
@@ -207,10 +198,10 @@
                 const options = cart[item.id] || [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
                 const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0);
 
-                let fullImgUrl = 'https://placehold.co/120';
-                if (item.image) {
-                    fullImgUrl = item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
-                }
+                // ƯU TIÊN LẤY THẲNG LINK TUYỆT ĐỐI CLOUDINARY HOẶC TỰ ĐỘNG CHUẨN HÓA ĐƯỜNG DẪN CŨ
+                const fullImgUrl = item.image 
+                    ? (item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`)
+                    : 'https://placehold.co/120?text=No+Image';
 
                 let optionsHtml = "";
                 if (!sold && totalItemQty > 0) {
@@ -263,7 +254,7 @@
                 box.innerHTML += `
                 <div class="bg-white rounded-2xl shadow border mb-3 p-3">
                     <div class="flex gap-3">
-                        <img src="${fullImgUrl}" onclick="showImage('${fullImgUrl}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/120'">
+                        <img src="${fullImgUrl}" onclick="showImage('${fullImgUrl}')" class="w-20 h-20 rounded-xl object-cover cursor-pointer border hover:scale-105 transition-transform" onerror="this.src='https://placehold.co/120?text=TiemNhaMi'">
                         <div class="flex-1 flex flex-col justify-between">
                             <div>
                                 <div class="font-bold text-slate-800">${item.name || "Chưa đặt tên"}</div>
@@ -343,7 +334,6 @@
             document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ";
         }
 
-        // GỬI ĐƠN HÀNG MỚI
         async function submitOrder() {
             const customer = document.getElementById("customer").value.trim();
             const phone = document.getElementById("phone").value.trim();
@@ -416,3 +406,4 @@
         loadMenu();
     </script>
 </body>
+</html>
