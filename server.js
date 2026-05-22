@@ -1,7 +1,6 @@
 const express = require("express")
 const cors = require("cors")
 const multer = require("multer")
-const path = require("path")
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 require("dotenv").config()
@@ -20,49 +19,55 @@ app.use(express.urlencoded({
     limit: "50mb"
 }))
 
-app.use(express.static("public"))
+// Giữ lại định tuyến này để các ảnh local cũ không bị lỗi hiển thị ngay lập tức
 app.use("/uploads", express.static("uploads"))
+app.use(express.static("public"))
 
-// 1. Cấu hình thông tin kết nối với Cloudinary (Lấy từ Environment Variables trên Render)
+// ==========================================
+// CẤU HÌNH KẾT NỐI VÀ LƯU TRỮ CLOUDINARY
+// ==========================================
+
+// 1. Cấu hình thông tin xác thực tài khoản Cloudinary lấy từ Environment Variables trên Render
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// 2. Thiết lập cấu hình bộ lưu trữ Multer đẩy thẳng lên Cloudinary thay vì lưu file vật lý cục bộ
+// 2. Thiết lập bộ lưu trữ đám mây thay thế hoàn toàn cho diskStorage cũ
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: "tiem_nha_mi_menu", // Thư mục lưu ảnh tự động sinh ra trên giao diện Cloudinary của bạn
-        allowed_formats: ["jpg", "png", "jpeg", "webp"], // Các định dạng file cho phép upload
-        public_id: (req, file) => "product_" + Date.now(), // Tạo tên file ảnh ngẫu nhiên bằng thời gian để chống trùng
+        folder: "tiem_nha_mi_menu", // Thư mục tự động tạo trên Cloudinary của bạn
+        allowed_formats: ["jpg", "png", "jpeg", "webp"], // Định dạng file cho phép
+        public_id: (req, file) => "product_" + Date.now(), // Tên file chống trùng lặp
     },
 });
 
+// 3. Gắn cấu hình cloud vào multer
 const upload = multer({ storage: storage })
 
-// 3. API xử lý upload ảnh từ giao diện Admin
+// 4. API xử lý upload ảnh từ Admin và trả về link tuyệt đối
 app.post("/api/upload", upload.single("image"), (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ success: false, error: "Không tìm thấy file ảnh tải lên!" })
+            return res.status(400).json({ success: false, error: "Không nhận được file ảnh!" })
         }
         
-        // Điểm mấu chốt: req.file.path lúc này CHÍNH LÀ đường dẫn URL vĩnh viễn (https://res.cloudinary.com/...) do Cloudinary cấp
+        // req.file.path từ multer-storage-cloudinary chính là link URL vĩnh viễn dạng https://res.cloudinary.com/...
         const permanentImageUrl = req.file.path;
 
-        // Trả link ảnh trực tiếp này về cho trang Admin để lưu vào Database món ăn
         res.json({
             success: true,
-            url: permanentImageUrl
+            url: permanentImageUrl 
         })
     } catch (err) {
-        console.error("Lỗi upload Cloudinary:", err.message);
+        console.error("Lỗi xử lý tải ảnh lên Cloudinary:", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 })
 
+// Định tuyến các chức năng khác
 app.use("/api/menu", require("./server/routes/menu"))
 app.use("/api/orders", require("./server/routes/orders"))
 
