@@ -58,8 +58,22 @@ async function createTablesIfNotExist() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS categories (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
 
-    console.log("=== [DATABASE] Đã kiểm tra và tự động cấu hình xong các bảng ===");
+    // 2. Chèn các danh mục mẫu mặc định (nếu chưa có)
+    await pool.query(`
+        INSERT INTO categories (name) 
+        VALUES ('Cà phê'), ('Trà sữa'), ('Nước ép') 
+        ON CONFLICT (name) DO NOTHING;
+    `);
+
+    console.log("=== ĐỒNG BỘ DB: Bảng 'categories' đã sẵn sàng! ===");
   } catch (err) {
     console.error("=== [DATABASE ERROR] Lỗi tự động tạo bảng: ===", err);
   }
