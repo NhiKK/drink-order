@@ -25,12 +25,12 @@
     <div id="authOverlay" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-xl border border-slate-200">
             <div class="text-3xl mb-2">🔒</div>
-            <h2 class="text-lg font-black text-slate-900 uppercase tracking-tight">Hệ Thống Đơn Hàng</h2>
+            <h2 class="text-lg font-bold text-green-700 uppercase tracking-wide">Hệ Thống Đơn Hàng</h2>
             <p class="text-slate-400 text-xs mt-1 mb-4">Vui lòng nhập mật khẩu quản trị để tiếp tục</p>
             <input id="passwordInput" type="password" placeholder="Nhập mật khẩu..." 
-                class="w-full text-center border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-slate-900 font-mono mb-3"
+                class="w-full text-center border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-green-700 font-mono mb-3"
                 onkeypress="if(event.key === 'Enter') checkAuth()">
-            <button onclick="checkAuth()" class="w-full bg-slate-900 text-white font-bold text-xs py-3 rounded-xl hover:bg-slate-800 transition">
+            <button onclick="checkAuth()" class="w-full bg-green-700 text-white font-bold text-xs py-3 rounded-xl hover:bg-green-800 transition">
                 XÁC NHẬN ĐĂNG NHẬP
             </button>
         </div>
@@ -65,10 +65,10 @@
     <div id="print-section" class="hidden"></div>
 
     <script>
-        // CÀI ĐẶT MẬT KHẨU TẠI ĐÂY (Bạn có thể đổi tùy ý)
         const ADMIN_PASSWORD = "hcm,2026"; 
         let allOrders = [];
         
+        // ✨ Đã chỉnh sửa: Bộ màu "headerBg" và "textBg" pastel nhẹ nhàng giúp phân biệt trực quan cực tốt
         const GROUP_CONFIGS = [
             { id: "group-new", title: "💥 ĐƠN MỚI (CHỜ LÀM)", statuses: ["Đã nhận", "Đã tiếp nhận"], defaultOpen: true, headerBg: "bg-slate-100", textBg: "text-slate-700" },
             { id: "group-processing", title: "⏳ ĐANG PHA CHẾ", statuses: ["Đang làm", "Đang pha chế"], defaultOpen: true, headerBg: "bg-amber-50", textBg: "text-amber-800" },
@@ -79,7 +79,6 @@
         let groupsOpenState = {};
         GROUP_CONFIGS.forEach(g => { groupsOpenState[g.id] = g.defaultOpen; });
 
-        // KIỂM TRA MẬT KHẨU KHI MỞ TRANG
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem("is_admin_authenticated") === "true") {
                 document.getElementById("authOverlay").classList.add("hidden");
@@ -124,13 +123,13 @@
                 const isOpen = groupsOpenState[group.id];
 
                 let groupHtml = `
-                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-4">
                         <div onclick="toggleGroup('${group.id}')" class="flex justify-between items-center px-4 py-3 ${group.headerBg} ${group.textBg} cursor-pointer select-none text-xs font-bold tracking-wider">
                             <span>${group.title} (${ordersInGroup.length})</span>
                             <span class="text-[10px] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}">▼</span>
                         </div>
                         
-                        <div id="${group.id}" class="${isOpen ? 'block' : 'hidden'} p-3 bg-[#fdfdfd] space-y-2">
+                        <div id="${group.id}" class="${isOpen ? 'block' : 'hidden'} p-4 bg-[#fdfdfd] space-y-4">
                 `;
 
                 if (ordersInGroup.length === 0) {
@@ -160,8 +159,9 @@
                             timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'});
                         }
 
+                        // ✨ Đã chỉnh sửa: Biến mỗi đơn thành 1 "Card" bo tròn rounded-2xl, viền border-slate-200 nhạt, đổ bóng và khoảng cách mb-4 rất rõ ràng, rê chuột vào tự nổi bật bóng lên
                         groupHtml += `
-                            <div class="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow relative mb-2">
                                 <div class="md:w-1/4 space-y-0.5">
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs font-mono font-bold text-slate-400">#${order.id}</span>
