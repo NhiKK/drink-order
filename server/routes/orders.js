@@ -94,8 +94,9 @@ router.post("/", async (req, res) => {
 router.get("/track/:phone", async (req, res) => {
     try {
         const phone = req.params.phone
+        // BỔ SUNG CỘT items VÀO CÂU LỆNH SELECT DƯỚI ĐÂY:
         const result = await db.query(
-            "SELECT id, total, status, created_at FROM orders WHERE phone = $1 ORDER BY id DESC LIMIT 5",
+            "SELECT id, total, status, items, created_at FROM orders WHERE phone = $1 ORDER BY id DESC LIMIT 5",
             [phone]
         )
         const orders = result.rows || result
@@ -105,6 +106,5 @@ router.get("/track/:phone", async (req, res) => {
         res.status(500).json({ success: false, error: err.message })
     }
 })
-
 // BẮT BUỘC PHẢI CÓ ĐỂ SERVER CHẠY ĐƯỢC
 module.exports = router

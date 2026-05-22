@@ -92,7 +92,7 @@
         async function trackOrders(phone) {
             if (!phone) return;
             try {
-                const res = await fetch(`${BACKEND_URL}/api/orders/track/${phone}`);
+                const res = await fetch(`https://drink-order-backend.onrender.com/api/orders/track/${phone}`);
                 const orders = await res.json();
                 
                 const trackingArea = document.getElementById("trackingArea");
@@ -103,39 +103,43 @@
                     orderListStatus.innerHTML = "";
                     
                     orders.forEach(order => {
-                        // Thiết lập màu sắc trạng thái giống thiết kế cũ
+                        // Định dạng màu sắc trạng thái đơn hàng
                         let statusColor = "bg-amber-100 text-amber-800 border-amber-200";
                         if (order.status === "Đang làm") statusColor = "bg-blue-100 text-blue-800 border-blue-200";
                         if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
-                        // Giải nén mảng danh sách các ly nước từ chuỗi JSON
+                        // Duyệt qua chuỗi JSON của cột items để bóc tách thông tin món ăn
                         let itemsHtml = "";
-                        try {
-                            const parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                            if (Array.isArray(parsedItems)) {
-                                parsedItems.forEach(item => {
-                                    itemsHtml += `
-                                        <div class="text-xs text-slate-600 bg-slate-50/80 p-2 rounded border border-slate-100 flex justify-between items-start">
-                                            <div>
-                                                <span class="font-bold text-slate-800">${item.name}</span>
-                                                <span class="text-slate-400 mx-1">|</span>
-                                                <span class="text-slate-500 font-medium text-[11px]">Đường: ${item.sugar} • Đá: ${item.ice}</span>
-                                                ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghi chú: ${item.note}</div>` : ''}
+                        if (order.items) {
+                            try {
+                                const parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+                                if (Array.isArray(parsedItems)) {
+                                    parsedItems.forEach(item => {
+                                        itemsHtml += `
+                                            <div class="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 flex justify-between items-start my-1">
+                                                <div>
+                                                    <span class="font-bold text-slate-800">${item.name}</span>
+                                                    <span class="text-slate-400 mx-1">|</span>
+                                                    <span class="text-slate-500 text-[11px]">Đường: ${item.sugar} • Đá: ${item.ice}</span>
+                                                    ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghi chú ly: ${item.note}</div>` : ''}
+                                                </div>
+                                                <span class="font-bold text-green-700 font-mono bg-green-50 px-1.5 py-0.5 rounded text-[11px]">${item.qty} ly</span>
                                             </div>
-                                            <span class="font-bold text-green-700 font-mono bg-green-50 px-1.5 py-0.5 rounded text-[11px]">${item.qty} ly</span>
-                                        </div>
-                                    `;
-                                });
+                                        `;
+                                    });
+                                }
+                            } catch (e) {
+                                itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể đọc danh sách món ăn</div>`;
                             }
-                        } catch (e) {
-                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể tải danh sách món ăn</div>`;
+                        } else {
+                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không có dữ liệu món ăn trả về từ server</div>`;
                         }
 
-                        // Vẽ cấu hình HTML có class cursor-pointer và hàm click để bật/tắt xổ dữ liệu
+                        // Đổ dữ liệu ra cấu trúc thẻ Accordion (Click tiêu đề để đóng/mở nội dung bên dưới)
                         orderListStatus.innerHTML += `
-                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div onclick="toggleOrderDetails(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition active:bg-slate-100">
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-2">
+                                <div onclick="toggleOrderDetails(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors">
                                     <div class="flex items-center gap-1">
                                         <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
                                         <span class="text-slate-300 mx-1">|</span>
@@ -147,10 +151,9 @@
                                     </span>
                                 </div>
                                 
-                                <div id="details-${order.id}" class="hidden p-3 pt-0 border-t border-slate-100 bg-slate-50/30 space-y-1.5">
-                                    <div class="text-[11px] text-slate-400 font-medium mb-1">Chi tiết món đã đặt:</div>
-                                    ${itemsHtml}
-                                    ${order.note ? `<div class="text-xs text-slate-500 bg-amber-50/50 p-2 rounded border border-dashed border-amber-200 mt-2"><b>Ghi chú đơn:</b> ${order.note}</div>` : ''}
+                                <div id="details-${order.id}" class="hidden p-3 pt-0 border-t border-slate-100 bg-slate-50/20">
+                                    <div class="text-[11px] text-slate-400 font-semibold mb-1 mt-1">Chi tiết món đã đặt:</div>
+                                    <div class="space-y-1">${itemsHtml}</div>
                                 </div>
                             </div>
                         `;
@@ -163,7 +166,7 @@
             }
         }
 
-        // HÀM XỬ LÝ ẨN/HIỆN THÔNG TIN CHI TIẾT KHI CLICK
+        // HÀM ẨN/HIỆN NỘI DUNG CHI TIẾT
         function toggleOrderDetails(orderId) {
             const detailBlock = document.getElementById(`details-${orderId}`);
             if (detailBlock) {
