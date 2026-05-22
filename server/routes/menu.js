@@ -9,12 +9,14 @@ router.get(
         try {
             const result = await db.query(
                 `
-                SELECT *
-                FROM menu
-                WHERE status != 'Ngừng bán'
-                ORDER BY id DESC
+                SELECT m.* FROM menu m
+                LEFT JOIN categories c ON m.category = c.name
+                WHERE m.status != 'Ngừng bán'
+                ORDER BY 
+                    c.id ASC, 
+                    m.id ASC 
                 `
-            )
+            );
 
             // Thư viện 'pg' trả về Object, dữ liệu thực tế nằm trong mảng .rows
             const rows = result.rows || result;
