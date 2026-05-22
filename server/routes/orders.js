@@ -1,3 +1,8 @@
+const express = require("express")
+const router = express.Router()
+const db = require("../db") 
+
+
 router.post("/", async (req, res) => {
     try {
         const {
@@ -9,7 +14,6 @@ router.post("/", async (req, res) => {
             status
         } = req.body
 
-       
         const result = await db.query(
             `
             INSERT INTO orders (
@@ -18,10 +22,9 @@ router.post("/", async (req, res) => {
                 items,
                 note,
                 total,
-                detail,
                 status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
             `,
             [
@@ -30,7 +33,6 @@ router.post("/", async (req, res) => {
                 items, 
                 note,
                 total,
-                "", 
                 status || "Đã nhận"
             ]
         )
@@ -48,17 +50,21 @@ router.post("/", async (req, res) => {
         })
     }
 })
+
 router.get("/track/:phone", async (req, res) => {
     try {
-        const phone = req.params.phone;
+        const phone = req.params.phone
         const result = await db.query(
             "SELECT id, total, status, created_at FROM orders WHERE phone = $1 ORDER BY id DESC LIMIT 5",
             [phone]
-        );
-        const orders = result.rows || result;
-        res.json(orders);
+        )
+        const orders = result.rows || result
+        res.json(orders) 
     } catch (err) {
-        console.error("Lỗi tra cứu đơn:", err.message);
-        res.status(500).json({ success: false, error: err.message });
+        console.error("Lỗi tra cứu đơn:", err.message)
+        res.status(500).json({ success: false, error: err.message })
     }
-});
+})
+
+
+module.exports = router
