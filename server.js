@@ -70,7 +70,7 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
 // Định tuyến các chức năng khác
 app.use("/api/menu", require("./server/routes/menu"))
 app.use("/api/orders", require("./server/routes/orders"))
-
+app.use("/api/categories", require("./server/routes/categories"))
 // Chạy Server Backend
 app.listen(process.env.PORT, () => {
     console.log("SERVER IS RUNNING ON PORT:", process.env.PORT)

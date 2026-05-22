@@ -11,6 +11,14 @@
 <body class="bg-slate-100">
 
     <div class="max-w-5xl mx-auto p-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 max-w-md mx-auto">
+            <h3 class="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">🛠️ Quản lý Danh mục món</h3>
+            <div class="flex gap-2 mb-4">
+                <input id="newCategoryName" placeholder="Tên danh mục mới... VD: Trà trái cây" class="border p-2.5 rounded-xl flex-1 outline-none focus:ring-2 focus:ring-green-600 text-sm">
+                <button onclick="addCategory()" class="bg-green-700 text-white px-4 rounded-xl font-bold text-sm hover:bg-green-800 transition active:scale-95">Thêm</button>
+            </div>
+            <div id="adminCategoryList" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1"></div>
+        </div>
 
         <div class="flex justify-between items-center mb-5">
             <h1 class="text-2xl font-bold">⚙️ Quản lý Menu</h1>
@@ -29,7 +37,74 @@
 
     <script>
         let menu = [];
+        let globalCategories = []; // Mảng chứa danh sách danh mục dùng chung để render dropdown
         const BACKEND_URL = "https://drink-order-backend.onrender.com";
+
+        // ==========================================
+        // THÀNH PHẦN 1: QUẢN LÝ DANH MỤC (CATEGORIES)
+        // ==========================================
+
+        // Hàm tự động tải danh mục từ DB về đổ vào Dropdown món ăn và bảng quản lý danh mục
+        async function loadCategories() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/categories`);
+                globalCategories = await res.json();
+                
+                // 1. Đổ dữ liệu ra danh sách nhãn quản lý để Admin tiện theo dõi / bấm xóa
+                const listBtnBox = document.getElementById("adminCategoryList");
+                if (listBtnBox) {
+                    listBtnBox.innerHTML = globalCategories.map(cat => `
+                        <span class="bg-slate-50 border text-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                            ${cat.name}
+                            <button onclick="deleteCategory(${cat.id})" class="text-red-500 font-bold hover:text-red-700 text-sm ml-1">×</button>
+                        </span>
+                    `).join("");
+                }
+
+                // Sau khi tải danh mục xong thì mới tải và render Menu để đồng bộ dữ liệu dropdown
+                await loadMenu();
+            } catch (err) {
+                console.error("Lỗi tải danh mục:", err);
+            }
+        }
+
+        // Hàm xử lý khi Admin gõ chữ và bấm nút "Thêm danh mục"
+        async function addCategory() {
+            const input = document.getElementById("newCategoryName");
+            const name = input.value.trim();
+            if (!name) return alert("Vui lòng nhập tên danh mục!");
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/categories`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                input.value = "";
+                await loadCategories(); // Gọi tải lại danh sách mới ngay lập tức
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // Hàm xử lý khi Admin bấm nút dấu (×) để xóa danh mục
+        async function deleteCategory(id) {
+            if (!confirm("Bạn có chắc chắn muốn xóa danh mục này không? Thao tác này không làm ảnh hưởng đến món đã gán danh mục này.")) return;
+            try {
+                await fetch(`${BACKEND_URL}/api/categories/${id}`, { method: "DELETE" });
+                await loadCategories(); // Tải lại danh sách sau khi xóa
+            } catch (err) {
+                console.error("Lỗi xóa danh mục:", err);
+            }
+        }
+
+
+        // ==========================================
+        // THÀNH PHẦN 2: QUẢN LÝ MÓN ĂN (MENU)
+        // ==========================================
 
         // 1. TẢI DỮ LIỆU MENU TỪ SERVER
         async function loadMenu() {
@@ -47,7 +122,7 @@
             return Number(x || 0).toLocaleString("vi-VN");
         }
 
-        // 3. HÀM RENDER ĐỒNG BỘ GIAO DIỆN (ĐÃ FIX KHÔNG BỊ NHÂN ĐÔI LINK ẢNH)
+        // 3. HÀM RENDER ĐỒNG BỘ GIAO DIỆN MÓN ĂN
         function render() {
             const box = document.getElementById("menuList");
             box.innerHTML = "";
@@ -58,15 +133,22 @@
             }
 
             menu.forEach((item, index) => {
-                // Xử lý kiểm tra link ảnh thông minh trước khi đưa vào thẻ src
+                // Xử lý kiểm tra link ảnh thông minh
                 let imgSrc = 'https://placehold.co/120';
                 if (item.image) {
                     if (item.image.startsWith('http')) {
-                        imgSrc = item.image; // Nếu đã có sẵn http thì giữ nguyên
+                        imgSrc = item.image;
                     } else {
-                        imgSrc = `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`; // Nếu chưa có http thì mới nối thêm vào
+                        imgSrc = `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
                     }
                 }
+
+                // Tạo các options danh mục động dựa vào cơ sở dữ liệu đã tải về
+                const categoryOptionsHtml = globalCategories.map(cat => {
+                    // Nếu thuộc tính category của món trùng tên danh mục nào thì tự động chọn (selected) danh mục đó
+                    const isSelected = item.category === cat.name ? "selected" : "";
+                    return `<option value="${cat.name}" ${isSelected}>${cat.name}</option>`;
+                }).join("");
 
                 box.innerHTML += `
                 <div class="drink-card bg-white rounded-2xl p-4 shadow flex gap-4 border border-slate-200">
@@ -80,23 +162,35 @@
                     </div>
 
                     <div class="flex-1 space-y-3">
-                        <div>
-                            <div class="text-sm font-medium text-slate-600 mb-1">Tên món</div>
-                            <input type="text" value="${item.name || ''}" oninput="updateMenuField(${index}, 'name', this.value)" class="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-400 outline-none">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-sm font-medium text-slate-600 mb-1">Tên món</div>
+                                <input type="text" value="${item.name || ''}" oninput="updateMenuField(${index}, 'name', this.value)" class="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-400 outline-none text-sm">
+                            </div>
+
+                            <div>
+                                <div class="text-sm font-medium text-slate-600 mb-1">Danh mục sản phẩm</div>
+                                <select onchange="updateMenuField(${index}, 'category', this.value)" class="border rounded-lg w-full p-2 bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm">
+                                    <option value="">-- Chưa chọn danh mục --</option>
+                                    ${categoryOptionsHtml}
+                                </select>
+                            </div>
                         </div>
 
-                        <div>
-                            <div class="text-sm font-medium text-slate-600 mb-1">Giá tiền (đ)</div>
-                            <input type="text" value="${money(item.price)}" oninput="changePrice(this, ${index})" class="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-400 outline-none">
-                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-sm font-medium text-slate-600 mb-1">Giá tiền (đ)</div>
+                                <input type="text" value="${money(item.price)}" oninput="changePrice(this, ${index})" class="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-400 outline-none text-sm">
+                            </div>
 
-                        <div>
-                            <div class="text-sm font-medium text-slate-600 mb-1">Trạng thái hiển thị</div>
-                            <select onchange="updateMenuField(${index}, 'status', this.value)" class="border rounded-lg w-full p-2 bg-white focus:ring-2 focus:ring-blue-400 outline-none">
-                                <option value="Đang bán" ${item.status === "Đang bán" ? "selected" : ""}>Đang bán</option>
-                                <option value="Hết hàng" ${item.status === "Hết hàng" ? "selected" : ""}>Hết hàng</option>
-                                <option value="Ngừng bán" ${item.status === "Ngừng bán" ? "selected" : ""}>Ngừng bán</option>
-                            </select>
+                            <div>
+                                <div class="text-sm font-medium text-slate-600 mb-1">Trạng thái hiển thị</div>
+                                <select onchange="updateMenuField(${index}, 'status', this.value)" class="border rounded-lg w-full p-2 bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm">
+                                    <option value="Đang bán" ${item.status === "Đang bán" ? "selected" : ""}>Đang bán</option>
+                                    <option value="Hết hàng" ${item.status === "Hết hàng" ? "selected" : ""}>Hết hàng</option>
+                                    <option value="Ngừng bán" ${item.status === "Ngừng bán" ? "selected" : ""}>Ngừng bán</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -107,14 +201,14 @@
             });
         }
 
-        // 4. HÀM CẬP NHẬT DỮ LIỆU
+        // 4. HÀM CẬP NHẬT DỮ LIỆU TRONG MẢNG TAM THỜI
         function updateMenuField(index, field, value) {
             if (menu[index]) {
                 menu[index][field] = value;
             }
         }
 
-        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN
+        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN VÀ TỰ PHÂN TÁCH DẤU PHẨY HÀNG NGHÌN
         function changePrice(el, index) {
             const raw = el.value.replace(/\D/g, "");
             if (menu[index]) {
@@ -123,7 +217,7 @@
             el.value = money(raw);
         }
 
-        // 6. XỬ LÝ UPLOAD ẢNH (CHỈ LƯU PATH TINH GỌN VÀO MẢNG DỮ LIỆU)
+        // 6. XỬ LÝ UPLOAD ẢNH LÊN CLOUDINARY THÔNG QUA BACKEND
         async function uploadImage(event, index) {
             const file = event.target.files[0];
             if (!file) return;
@@ -141,10 +235,8 @@
 
                 const data = await response.json();
                 
-                // GIẢI PHÁP: Mảng dữ liệu gốc CHỈ lưu phần đuôi tinh gọn (Ví dụ: /uploads/123.png)
                 menu[index].image = data.url;
 
-                // Hiển thị đầy đủ lên màn hình preview lúc đó cho người dùng xem
                 const fullImageUrl = data.url.startsWith('http') ? data.url : `${BACKEND_URL}${data.url}`;
                 const card = event.target.closest(".drink-card");
                 if (card) {
@@ -162,17 +254,21 @@
         // 7. THÊM MÓN MỚI LÊN ĐẦU DANH SÁCH
         function addDrink() {
             const safeId = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
+            // Món mới mặc định lấy tên danh mục đầu tiên trong danh sách (nếu có) để tránh trống dữ liệu
+            const defaultCategory = globalCategories.length > 0 ? globalCategories[0].name : "";
+
             menu.unshift({
                 id: safeId,
                 name: "",
                 price: 0,
                 image: "",
+                category: defaultCategory, // Khởi tạo thuộc tính danh mục mặc định
                 status: "Đang bán"
             });
             render();
         }
 
-        // 8. XÓA MÓN
+        // 8. XÓA MÓN KHỎI MENU TẠM THỜI
         function removeDrink(i) {
             if (confirm("Bạn có chắc chắn muốn xóa món này không?")) {
                 menu.splice(i, 1);
@@ -187,20 +283,19 @@
                 return;
             }
 
-            // Làm sạch dữ liệu và bóc tách bỏ bớt tên miền trùng lặp nếu có lỡ dính
             for (let i = 0; i < menu.length; i++) {
                 if (!menu[i].name || !menu[i].name.trim()) {
                     alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món!`);
                     return;
                 }
                 
-                // Chuẩn hóa: Nếu lỡ dính link tuyệt đối, cắt bỏ tên miền ra chỉ lưu path tinh gọn
                 if (menu[i].image && menu[i].image.includes(BACKEND_URL)) {
                     menu[i].image = menu[i].image.replace(BACKEND_URL, "");
                 }
 
                 menu[i].price = menu[i].price ? Number(menu[i].price) : 0;
                 menu[i].image = menu[i].image || "";
+                menu[i].category = menu[i].category || ""; // Đảm bảo trường category không bị undefined
                 menu[i].status = menu[i].status || "Đang bán";
             }
 
@@ -215,7 +310,7 @@
 
                 if (response.ok) {
                     alert("🎉 Đã lưu danh sách Menu sạch xuống Database thành công!");
-                    loadMenu(); 
+                    await loadMenu(); 
                 } else {
                     alert("❌ Lưu menu thất bại. Hãy kiểm tra định dạng.");
                 }
@@ -225,7 +320,9 @@
             }
         }
 
-        loadMenu();
+        // CHẠY ĐẦU TIÊN KHI TRANG MỞ LÊN: Tải danh mục trước, sau đó tải menu tự động lồng bên trong
+        loadCategories();
     </script>
 </body>
+
 </html>
