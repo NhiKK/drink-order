@@ -52,7 +52,6 @@
             <h3 class="font-bold text-sm text-slate-700">👤 Thông tin giao hàng:</h3>
             <input id="customer" placeholder="Tên khách hàng" class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600 text-sm">
             <input id="phone" placeholder="Số điện thoại" class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600 text-sm">
-            <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn..." class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600 text-sm" rows="2"></textarea>
         </div>
 
         <div id="cart-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_10px_rgba(0,0,0,0.1)] max-w-md mx-auto z-50 hidden">
@@ -61,7 +60,8 @@
                 <span id="cart-toggle-btn">Xem đơn ▼</span>
             </div>
 
-            <div id="cartDetail" class="hidden max-h-60 overflow-y-auto p-4 space-y-3 bg-white"></div>
+            <div id="cartDetail" class="hidden max-h-60 overflow-y-auto p-4 space-y-3 bg-white">
+                </div>
 
             <div class="p-4 bg-white flex items-center justify-between gap-4 border-t">
                 <div>
@@ -104,7 +104,7 @@
             }
         });
 
-        // 🌟 HÀM THEO DÕI TRẠNG THÁI ĐƠN HÀNG: ĐÃ THÊM NÚT ▼ XỔ XEM CHI TIẾT MÓN ĐÃ ĐẶT
+        // 📋 THEO DÕI ĐƠN HÀNG ĐÃ ĐẶT (Có nút ▼ xổ xem chi tiết món uống)
         async function trackOrders(phone) {
             if (!phone) return;
             try {
@@ -122,7 +122,6 @@
                         if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
-                        // Phân rã danh sách món từ chuỗi JSON string trong database thành mảng dữ liệu công thức
                         let itemsArray = [];
                         try {
                             itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
@@ -131,19 +130,19 @@
                         let itemsDetailHtml = "";
                         if(Array.isArray(itemsArray)) {
                             itemsArray.forEach(subItem => {
+                                let toppingStr = subItem.topping && subItem.topping.length > 0 ? ` + Topping: ${subItem.topping.join(', ')}` : '';
+                                let noteStr = subItem.note ? ` | Ghi chú: ${subItem.note}` : '';
                                 itemsDetailHtml += `
                                     <div class="flex justify-between items-center text-xs text-slate-600 border-b border-slate-100 pb-1.5 pt-1.5 last:border-0">
-                                        <div>
+                                        <div class="pr-2">
                                             <span class="font-semibold text-slate-800">${subItem.name}</span>
-                                            <span class="text-[10px] text-slate-400 block">${subItem.sugar || "100% đường"} | ${subItem.ice || "100% đá"}</span>
+                                            <span class="text-[10px] text-slate-400 block">${subItem.sugar || "100% đường"} | ${subItem.ice || "100% đá"}${toppingStr}${noteStr}</span>
                                         </div>
-                                        <span class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded font-mono">x${subItem.qty}</span>
-                                    </div>
-                                `;
+                                        <span class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded font-mono shrink-0">x${subItem.qty}</span>
+                                    </div>`;
                             });
                         }
 
-                        // Render cấu trúc giao diện kèm khối chi tiết và nút bấm xổ xuống ▼
                         orderListStatus.innerHTML += `
                             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div onclick="toggleTrackDetail(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 select-none transition-colors">
@@ -158,9 +157,9 @@
                                     </div>
                                     <span id="track-btn-${order.id}" class="text-xs font-bold text-slate-400 bg-slate-100 border px-2 py-1 rounded-lg transition-all">Xem món ▼</span>
                                 </div>
-                                
                                 <div id="track-detail-${order.id}" class="hidden bg-slate-50/50 border-t px-3 py-1 space-y-1 max-h-40 overflow-y-auto">
                                     ${itemsDetailHtml}
+                                    ${order.note ? `<div class="text-[11px] text-amber-700 bg-amber-50 p-1.5 rounded mt-1">📌 Ghi chú đơn: ${order.note}</div>` : ''}
                                 </div>
                             </div>`;
                     });
@@ -172,11 +171,9 @@
             }
         }
 
-        // 🌟 HÀM BỔ SUNG: ĐÓNG / MỞ VÙNG XEM CHI TIẾT MÓN ĐÃ ĐẶT (KHI BẤM NÚT ▼)
         function toggleTrackDetail(orderId) {
             const detailBox = document.getElementById(`track-detail-${orderId}`);
             const btnLabel = document.getElementById(`track-btn-${orderId}`);
-            
             if (detailBox.classList.contains("hidden")) {
                 detailBox.classList.remove("hidden");
                 btnLabel.innerText = "Thu gọn ▲";
@@ -203,7 +200,8 @@
 
                 menu.forEach(item => {
                     if (!cart[item.id]) {
-                        cart[item.id] = [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
+                        // Khởi tạo mảng cấu trúc đầy đủ Đường, Đá, Topping, Ghi chú ly chuẩn từ file index_old
+                        cart[item.id] = [{ qty: 0, sugar: "100% đường", ice: "100% đá", topping: [], note: "" }];
                     }
                 });
                 
@@ -227,6 +225,7 @@
             render();
         }
 
+        // Giao diện danh sách bên ngoài chỉ chứa nút Tăng/Giảm số lượng chính
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
@@ -250,51 +249,16 @@
                         <h2 class="text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-200/60 px-3 py-1.5 rounded-xl w-fit uppercase tracking-wider shadow-sm">
                             📁 ${category}
                         </h2>
-                    </div>
-                `;
+                    </div>`;
 
                 categoriesMap[category].forEach(item => {
                     const sold = item.status === "Hết hàng";
-                    const options = cart[item.id] || [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
+                    const options = cart[item.id] || [{ qty: 0, sugar: "100% đường", ice: "100% đá", topping: [], note: "" }];
                     const totalItemQty = options.reduce((sum, opt) => sum + opt.qty, 0);
 
                     let fullImgUrl = 'https://placehold.co/120?text=No+Image';
                     if (item.image) {
                         fullImgUrl = item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
-                    }
-
-                    let optionsHtml = "";
-                    if (!sold && totalItemQty > 0) {
-                        options.forEach((opt, index) => {
-                            if (opt.qty <= 0) return;
-                            optionsHtml += `
-                            <div class="mt-2 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-[11px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">Ly #${index + 1}</span>
-                                    <div class="flex items-center gap-2">
-                                        <button onclick="changeOptionQty(${item.id}, ${index}, -1)" class="bg-slate-200 text-xs w-5 h-5 rounded flex items-center justify-center font-bold">-</button>
-                                        <span class="text-xs font-bold font-mono">${opt.qty}</span>
-                                        <button onclick="changeOptionQty(${item.id}, ${index}, 1)" class="bg-green-600 text-white text-xs w-5 h-5 rounded flex items-center justify-center font-bold">+</button>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2 text-xs">
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-1.5 bg-white outline-none focus:border-green-600">
-                                        <option ${opt.sugar === "100%" ? "selected" : ""}>100% đường</option>
-                                        <option ${opt.sugar === "70%" ? "selected" : ""}>70% đường</option>
-                                        <option ${opt.sugar === "50%" ? "selected" : ""}>50% đường</option>
-                                        <option ${opt.sugar === "30%" ? "selected" : ""}>30% đường</option>
-                                        <option ${opt.sugar === "0%" ? "selected" : ""}>0% đường</option>
-                                    </select>
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-1.5 bg-white outline-none focus:border-green-600">
-                                        <option ${opt.ice === "100%" ? "selected" : ""}>100% đá</option>
-                                        <option ${opt.ice === "70%" ? "selected" : ""}>70% đá</option>
-                                        <option ${opt.ice === "50%" ? "selected" : ""}>50% đá</option>
-                                        <option ${opt.ice === "30%" ? "selected" : ""}>30% đá</option>
-                                        <option ${opt.ice === "0%" ? "selected" : ""}>0% đá</option>
-                                    </select>
-                                </div>
-                            </div>`;
-                        });
                     }
 
                     categoryHtml += `
@@ -314,7 +278,6 @@
                                     </div>`}
                             </div>
                         </div>
-                        ${optionsHtml}
                     </div>`;
                 });
 
@@ -328,7 +291,7 @@
             if (!options) return;
             if (n > 0) {
                 if (options[options.length - 1].qty > 0) {
-                    options.push({ qty: 1, sugar: "100%", ice: "100%", note: "" });
+                    options.push({ qty: 1, sugar: "100% đường", ice: "100% đá", topping: [], note: "" });
                 } else {
                     options[options.length - 1].qty = 1;
                 }
@@ -343,23 +306,37 @@
                     }
                 }
             }
-            render();
+            if (!document.getElementById("cartDetail").classList.contains("hidden")) {
+                renderCartDetail();
+            }
+            calc();
         }
 
         function changeOptionQty(id, index, n) {
             if (cart[id] && cart[id][index]) {
                 cart[id][index].qty += n;
                 if (cart[id][index].qty < 0) cart[id][index].qty = 0;
-                render();
+                renderCartDetail();
+                calc();
             }
         }
 
         function updateOptionField(id, index, field, value) {
             if (cart[id] && cart[id][index]) {
                 cart[id][index][field] = value;
-                if (!document.getElementById("cartDetail").classList.contains("hidden")) {
-                    renderCartDetail();
+            }
+        }
+
+        // Xử lý Checkbox Topping đồng bộ mảng chuẩn xác từ file index_old
+        function updateTopping(id, index, name, checked) {
+            if (cart[id] && cart[id][index]) {
+                let toppings = cart[id][index].topping || [];
+                if (checked) {
+                    if (!toppings.includes(name)) toppings.push(name);
+                } else {
+                    toppings = toppings.filter(x => x !== name);
                 }
+                cart[id][index].topping = toppings;
             }
         }
 
@@ -383,6 +360,7 @@
             }
         }
 
+        // 🔄 KHÔI PHỤC HOÀN TOÀN BIỂU MẪU ĐẦY ĐỦ TRONG ẢNH ĐÍNH KÈM VÀO #cartDetail
         function renderCartDetail() {
             const detail = document.getElementById("cartDetail");
             detail.innerHTML = "";
@@ -393,23 +371,63 @@
                 options.forEach((opt, idx) => {
                     if (opt.qty > 0) {
                         hasItem = true;
+                        
+                        // Kiểm tra trạng thái đã check của topping để gán thuộc tính "checked" khi re-render
+                        const hasTp1 = opt.topping && opt.topping.includes("Trân châu trắng") ? "checked" : "";
+                        const hasTp2 = opt.topping && opt.topping.includes("Thạch nha đam") ? "checked" : "";
+                        const hasTp3 = opt.topping && opt.topping.includes("Trân châu đen") ? "checked" : "";
+
                         detail.innerHTML += `
-                            <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border text-xs">
-                                <div>
-                                    <span class="font-bold text-slate-800">${item.name}</span>
-                                    <span class="text-[10px] text-slate-400 block mt-0.5">(Ly #${idx + 1}: ${opt.sugar} | ${opt.ice})</span>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm space-y-2">
+                                <div class="flex justify-between items-center font-bold text-gray-800">
+                                    <span>${item.name} (Ly #${idx + 1})</span>
+                                    <div class="flex items-center gap-2">
+                                        <button onclick="changeOptionQty(${item.id}, ${idx}, -1)" class="bg-gray-200 px-2 rounded font-bold">-</button>
+                                        <span class="font-mono">${opt.qty}</span>
+                                        <button onclick="changeOptionQty(${item.id}, ${idx}, 1)" class="bg-green-700 text-white px-2 rounded font-bold">+</button>
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-2 font-mono">
-                                    <span class="text-slate-500">SL:</span>
-                                    <span class="font-bold text-slate-800 bg-white border px-2 py-0.5 rounded shadow-sm">${opt.qty}</span>
+                                
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <select onchange="updateOptionField(${item.id}, ${idx}, 'sugar', this.value)" class="border rounded p-1 bg-white outline-none">
+                                        <option ${opt.sugar === "100% đường" ? "selected" : ""}>100% đường</option>
+                                        <option ${opt.sugar === "70% đường" ? "selected" : ""}>70% đường</option>
+                                        <option ${opt.sugar === "50% đường" ? "selected" : ""}>50% đường</option>
+                                        <option ${opt.sugar === "30% đường" ? "selected" : ""}>30% đường</option>
+                                        <option ${opt.sugar === "0% đường" ? "selected" : ""}>0% đường</option>
+                                    </select>
+                                    <select onchange="updateOptionField(${item.id}, ${idx}, 'ice', this.value)" class="border rounded p-1 bg-white outline-none">
+                                        <option ${opt.ice === "100% đá" ? "selected" : ""}>100% đá</option>
+                                        <option ${opt.ice === "70% đá" ? "selected" : ""}>70% đá</option>
+                                        <option ${opt.ice === "50% đá" ? "selected" : ""}>50% đá</option>
+                                        <option ${opt.ice === "30% đá" ? "selected" : ""}>30% đá</option>
+                                        <option ${opt.ice === "0% đá" ? "selected" : ""}>0% đá</option>
+                                    </select>
                                 </div>
-                            </div>
-                        `;
-                    }
+
+                                <div class="text-xs text-gray-600 space-y-1 pt-1">
+                                    <div class="font-semibold text-gray-700">Thêm Topping:</div>
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <label class="flex items-center gap-1"><input type="checkbox" ${hasTp1} onchange="updateTopping(${item.id}, ${idx}, 'Trân châu trắng', this.checked)"> Trân châu trắng</label>
+                                        <label class="flex items-center gap-1"><input type="checkbox" ${hasTp2} onchange="updateTopping(${item.id}, ${idx}, 'Thạch nha đam', this.checked)"> Nha đam</label>
+                                        <label class="flex items-center gap-1"><input type="checkbox" ${hasTp3} onchange="updateTopping(${item.id}, ${idx}, 'Trân châu đen', this.checked)"> Trân châu đen</label>
+                                    </div>
+                                </div>
+
+                                <input type="text" value="${opt.note || ''}" placeholder="Ghi chú cho ly này (ví dụ: ít ngọt, nhiều thạch...)" 
+                                    onchange="updateOptionField(${item.id}, ${idx}, 'note', this.value)"
+                                    class="w-full border rounded p-1.5 text-xs outline-none bg-white">
+                            </div>`;
                 });
             });
 
-            if (!hasItem) {
+            // Ghi chú chung toàn đơn ở ngay cuối giỏ hàng chuẩn file cũ của bạn
+            if (hasItem) {
+                detail.innerHTML += `
+                    <div class="pt-2 border-t border-gray-200">
+                        <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn hàng..." class="border rounded p-2 w-full text-xs outline-none focus:ring-1 focus:ring-green-700" rows="2"></textarea>
+                    </div>`;
+            } else {
                 detail.innerHTML = `<div class="text-center text-slate-400 text-xs italic py-2">Giỏ hàng đang trống...</div>`;
             }
         }
@@ -431,9 +449,6 @@
             const cartBar = document.getElementById("cart-bar");
             if (totalQty > 0) {
                 cartBar.classList.remove("hidden");
-                if (!document.getElementById("cartDetail").classList.contains("hidden")) {
-                    renderCartDetail();
-                }
             } else {
                 cartBar.classList.add("hidden");
                 document.getElementById("cartDetail").classList.add("hidden");
@@ -444,7 +459,10 @@
         async function submitOrder() {
             const customer = document.getElementById("customer").value.trim();
             const phone = document.getElementById("phone").value.trim();
-            const note = document.getElementById("orderNote").value.trim();
+            
+            // Lấy ghi chú đơn từ phần textarea nằm trong cụm giỏ hàng
+            const noteEl = document.getElementById("orderNote");
+            const note = noteEl ? noteEl.value.trim() : "";
 
             if (!customer || !phone) { alert("Vui lòng nhập Tên và Số điện thoại nhận hàng!"); return; }
 
@@ -455,7 +473,14 @@
                 const options = cart[item.id] || [];
                 options.forEach(opt => {
                     if (opt.qty <= 0) return;
-                    items.push({ name: item.name, qty: opt.qty, sugar: opt.sugar, ice: opt.ice });
+                    items.push({ 
+                        name: item.name, 
+                        qty: opt.qty, 
+                        sugar: opt.sugar, 
+                        ice: opt.ice, 
+                        topping: opt.topping || [], 
+                        note: opt.note || "" 
+                    });
                     total += (Number(item.price) || 0) * opt.qty;
                 });
             });
@@ -474,10 +499,9 @@
                 localStorage.setItem("customer_phone", phone);
 
                 document.getElementById("successModal").classList.remove("hidden");
-                document.getElementById("orderNote").value = "";
                 cart = {};
                 loadMenu();
-                trackOrders(phone); // Cập nhật lại khung đỏ trạng thái ngay lập tức
+                trackOrders(phone);
             } catch (error) {
                 alert("Đặt món không thành công, vui lòng kiểm tra lại mạng!");
             }
