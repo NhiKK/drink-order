@@ -70,14 +70,6 @@ async function createTablesIfNotExist() {
 
 
     console.log("=== ĐỒNG BỘ DB: BỔ SUNG category! ===");
-    await pool.query("BEGIN"); 
-    
-    // Xóa orders trước để tránh xung đột ràng buộc dữ liệu nếu có
-    await pool.query("DELETE FROM orders"); 
-    await pool.query("DELETE FROM menu");
-    
-    await pool.query("COMMIT");
-    console.log("🗑️ THÀNH CÔNG: Đã xóa toàn bộ dữ liệu cũ trong menu và orders!");
   } catch (err) {
     console.error("=== [DATABASE ERROR] Lỗi tự động tạo bảng: ===", err);
   }
