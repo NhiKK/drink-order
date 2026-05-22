@@ -10,6 +10,7 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
 
+        /* ĐỊNH DẠNG KHỔ IN CHUẨN KHÔNG BỊ DÍNH GIAO DIỆN WEB */
         @media print {
             body > *:not(#print-section) { display: none !important; }
             #print-section {
@@ -23,18 +24,31 @@
 </head>
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
 
-    <div class="max-w-6xl mx-auto p-4 md:p-6 pb-24">
+    <div class="max-w-6xl mx-auto pb-24">
         
-        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-200">
-            <div>
-                <h1 class="text-xl font-bold tracking-tight text-slate-900">Danh Sách Đơn Hàng</h1>
+        <div class="bg-white shadow-sm mb-6 rounded-b-2xl overflow-hidden border-b border-slate-200">
+            <div class="relative">
+                <img src="assets/banner.jpg" class="w-full h-32 object-cover" onerror="this.src='https://placehold.co/1200x300?text=Tiem+Nha+Mi+Banner'">
+                <div class="absolute inset-0 bg-black/5"></div>
             </div>
-            <button onclick="loadOrders()" class="bg-slate-900 text-white font-medium text-xs px-4 py-2 rounded-lg hover:bg-slate-800 active:scale-95 transition">
-                🔄 Làm mới
-            </button>
+
+            <div class="px-6 pb-4 relative flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -translate-y-6 sm:translate-y-0 sm:mt-[-30px]">
+                <div class="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                    <img src="assets/logo.jpg" class="w-20 h-20 rounded-full border-4 border-white bg-white shadow-md object-cover relative z-10" onerror="this.src='https://placehold.co/150'">
+                    <div class="sm:mb-2">
+                        <h1 class="text-xl font-black tracking-tight text-slate-900 uppercase">Hệ Thống Đơn Hàng</h1>
+                        <p class="text-slate-400 text-xs font-medium">Báo chế biến realtime & In hóa đơn thanh toán • Tiệm Nhà Mị</p>
+                    </div>
+                </div>
+                <div class="sm:mb-2">
+                    <button onclick="loadOrders()" class="bg-slate-900 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition shadow-sm">
+                        🔄 LÀM MỚI ĐƠN
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="space-y-3" id="orderGroupsContainer"></div>
+        <div class="px-4 md:px-6 space-y-3" id="orderGroupsContainer"></div>
 
     </div>
 
@@ -43,12 +57,11 @@
     <script>
         let allOrders = [];
         
-        // Cấu hình nhóm: Loại bỏ sạch màu sắc sặc sỡ, dùng tông xám/đen sang trọng
         const GROUP_CONFIGS = [
             { id: "group-new", title: "💥 ĐƠN MỚI (CHỜ LÀM)", statuses: ["Đã nhận", "Đã tiếp nhận"], defaultOpen: true, headerBg: "bg-slate-900", textBg: "text-white" },
             { id: "group-processing", title: "⏳ ĐANG PHA CHẾ", statuses: ["Đang làm", "Đang pha chế"], defaultOpen: true, headerBg: "bg-slate-700", textBg: "text-white" },
-            { id: "group-completed", title: "✅ ĐÃ HOÀN TẤT", statuses: ["Đã giao", "Hoàn tất"], defaultOpen: false, headerBg: "bg-slate-200", textBg: "text-slate-700" },
-            { id: "group-cancelled", title: "❌ ĐÃ HỦY", statuses: ["Đã hủy"], defaultOpen: false, headerBg: "bg-slate-100", textBg: "text-slate-400" }
+            { id: "group-completed", title: "✅ ĐÃ HOÀN TẤT", statuses: ["Đã giao", "Hoàn tất"], defaultOpen: false, headerBg: "bg-slate-200", textBg: "text-slate-700" },
+            { id: "group-cancelled", title: "❌ ĐÃ HỦY", statuses: ["Đã hủy"], defaultOpen: false, headerBg: "bg-slate-100", textBg: "text-slate-400" }
         ];
 
         let groupsOpenState = {};
@@ -89,7 +102,6 @@
                         let parsedItems = [];
                         try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; } catch(e) {}
 
-                        // LÀM NỔI BẬT MÓN UỐNG: Chữ đen tuyền bôi đậm siêu to, số lượng phóng đại cách biệt
                         let itemsHtml = parsedItems.map(it => `
                             <div class="flex justify-between items-center border-b border-slate-100 py-2 last:border-0 last:py-0">
                                 <div class="flex-1 pr-4">
@@ -112,7 +124,6 @@
 
                         groupHtml += `
                             <div class="bg-white border border-slate-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                
                                 <div class="md:w-1/4 space-y-0.5">
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs font-mono font-bold text-slate-400">#${order.id}</span>
@@ -146,7 +157,6 @@
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
                         `;
                     });
