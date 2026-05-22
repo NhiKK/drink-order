@@ -10,12 +10,10 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
 
-        /* ĐỊNH DẠNG KHỔ IN CHUẨN KHÔNG BỊ DÍNH GIAO DIỆN WEB */
         @media print {
             body > *:not(#print-section) { display: none !important; }
             #print-section {
-                display: block !important;
-                visibility: visible !important;
+                display: block !important; visibility: visible !important;
                 position: absolute; left: 0; top: 0; width: 100%;
                 max-width: 140mm; padding: 10px; background: white; color: black;
             }
@@ -24,7 +22,21 @@
 </head>
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
 
-    <div class="max-w-6xl mx-auto pb-24">
+    <div id="authOverlay" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-xl border border-slate-200">
+            <div class="text-3xl mb-2">🔒</div>
+            <h2 class="text-lg font-black text-slate-900 uppercase tracking-tight">Hệ Thống Đơn Hàng</h2>
+            <p class="text-slate-400 text-xs mt-1 mb-4">Vui lòng nhập mật khẩu quản trị để tiếp tục</p>
+            <input id="passwordInput" type="password" placeholder="Nhập mật khẩu..." 
+                class="w-full text-center border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-slate-900 font-mono mb-3"
+                onkeypress="if(event.key === 'Enter') checkAuth()">
+            <button onclick="checkAuth()" class="w-full bg-slate-900 text-white font-bold text-xs py-3 rounded-xl hover:bg-slate-800 transition">
+                XÁC NHẬN ĐĂNG NHẬP
+            </button>
+        </div>
+    </div>
+
+    <div id="mainContent" class="hidden max-w-6xl mx-auto pb-24">
         
         <div class="bg-white shadow-sm mb-6 rounded-b-2xl overflow-hidden border-b border-slate-200">
             <div class="relative">
@@ -37,13 +49,11 @@
                     <img src="assets/logo.jpg" class="w-20 h-20 rounded-full border-4 border-white bg-white shadow-md object-cover relative z-10" onerror="this.src='https://placehold.co/150'">
                     <div class="sm:mb-2">
                         <h1 class="text-xl font-black tracking-tight text-slate-900 uppercase">Hệ Thống Đơn Hàng</h1>
-                        <p class="text-slate-400 text-xs font-medium">Báo chế biến realtime & In hóa đơn thanh toán • Tiệm Nhà Mị</p>
                     </div>
                 </div>
-                <div class="sm:mb-2">
-                    <button onclick="loadOrders()" class="bg-slate-900 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition shadow-sm">
-                        🔄 LÀM MỚI ĐƠN
-                    </button>
+                <div class="sm:mb-2 flex gap-2">
+                    <button onclick="logout()" class="bg-slate-200 text-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl hover:bg-slate-300 transition">🚪 Đăng xuất</button>
+                    <button onclick="loadOrders()" class="bg-slate-900 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-slate-800 active:scale-95 transition shadow-sm">🔄 LÀM MỚI ĐƠN</button>
                 </div>
             </div>
         </div>
@@ -55,6 +65,8 @@
     <div id="print-section" class="hidden"></div>
 
     <script>
+        // CÀI ĐẶT MẬT KHẨU TẠI ĐÂY (Bạn có thể đổi tùy ý)
+        const ADMIN_PASSWORD = "hcm,2026"; 
         let allOrders = [];
         
         const GROUP_CONFIGS = [
@@ -66,6 +78,32 @@
 
         let groupsOpenState = {};
         GROUP_CONFIGS.forEach(g => { groupsOpenState[g.id] = g.defaultOpen; });
+
+        // KIỂM TRA MẬT KHẨU KHI MỞ TRANG
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem("is_admin_authenticated") === "true") {
+                document.getElementById("authOverlay").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                loadMenu();
+            }
+        });
+
+        function checkAuth() {
+            const input = document.getElementById("passwordInput").value;
+            if (input === ADMIN_PASSWORD) {
+                localStorage.setItem("is_admin_authenticated", "true");
+                document.getElementById("authOverlay").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                loadMenu();
+            } else {
+                alert("❌ Mật khẩu không chính xác, vui lòng thử lại!");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("is_admin_authenticated");
+            location.reload();
+        }
 
         async function loadOrders() {
             try {
@@ -206,7 +244,7 @@
             let timeString = "";
             if(order.created_at) {
                 const date = new Date(order.created_at);
-                timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'}) + " " + date.toLocaleDateString("vi-VN");
+                timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'});
             }
 
             const printBox = document.getElementById("print-section");
@@ -218,27 +256,19 @@
                     <h3 style="margin: 15px 0 5px 0; font-size: 16px; border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 5px 0;">PHIẾU CHẾ BIẾN (#${order.id})</h3>
                     <span style="font-size: 11px; color:#666;">Thời gian: ${timeString}</span>
                 </div>
-                
                 <div style="font-size: 13px; margin-bottom: 12px; line-height: 1.5;">
                     <div>Khách hàng: <b>${order.customer_name}</b></div>
                     <div>Số điện thoại: <b>${order.phone}</b></div>
                     ${order.note ? `<div style="background: #f5f5f5; padding: 4px; border: 1px solid #ddd; margin-top: 3px;"><b>Ghi chú: ${order.note}</b></div>` : ""}
                 </div>
-
                 <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 8px; background: #f9f9f9;">
-                    <span>Tên món uống</span>
-                    <span style="width: 40px; text-align: right;">SL</span>
+                    <span>Tên món uống</span><span style="width: 40px; text-align: right;">SL</span>
                 </div>
-                
-                <div style="margin-bottom: 15px;">
-                    ${itemsPrintHtml}
-                </div>
-
+                <div style="margin-bottom: 15px;">${itemsPrintHtml}</div>
                 <div style="text-align: right; font-size: 13px; line-height: 1.6; border-top: 1px solid #333; padding-top: 6px;">
                     <div>Tổng số lượng: <b>${totalQty} ly</b></div>
                     <div style="font-size: 16px; margin-top: 4px;">Thành tiền: <b style="color: #000;">${Number(order.total).toLocaleString("vi-VN")}đ</b></div>
                 </div>
-
                 <div style="text-align: center; margin-top: 25px; font-size: 11px; font-style: italic; color: #555; border-top: 1px dashed #ccc; padding-top: 10px;">
                     Cảm ơn quý khách đã ủng hộ Tiệm Nhà Mị! ❤️
                 </div>
@@ -246,7 +276,6 @@
             window.print();
         }
 
-        loadMenu();
         function loadMenu() {
             loadOrders();
             setInterval(loadOrders, 30000);

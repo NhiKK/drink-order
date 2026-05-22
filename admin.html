@@ -4,14 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Quản lý Menu</title>
+    <title>Quản lý Menu - Tiệm Nhà Mị</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-slate-100">
 
-    <div class="max-w-5xl mx-auto p-4">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 max-w-md mx-auto">
+    <div id="authOverlay" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-xl border border-slate-200">
+            <div class="text-3xl mb-2">🔐</div>
+            <h2 class="text-lg font-black text-slate-900 uppercase tracking-tight">Hệ Thống Cấu Hình</h2>
+            <p class="text-slate-400 text-xs mt-1 mb-4">Vui lòng nhập mật khẩu quản trị để sửa thực đơn</p>
+            <input id="passwordInput" type="password" placeholder="Nhập mật khẩu..." 
+                class="w-full text-center border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-slate-900 font-mono mb-3"
+                onkeypress="if(event.key === 'Enter') checkAuth()">
+            <button onclick="checkAuth()" class="w-full bg-slate-900 text-white font-bold text-xs py-3 rounded-xl hover:bg-slate-800 transition">
+                XÁC NHẬN ĐĂNG NHẬP
+            </button>
+        </div>
+    </div>
+
+    <div id="mainContent" class="hidden max-w-5xl mx-auto p-4 pb-24">
+        
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 max-w-md mx-auto relative">
+            <button onclick="logout()" class="absolute top-4 right-4 text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold px-2.5 py-1.5 rounded-lg transition">🚪 Đăng xuất</button>
             <h3 class="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">🛠️ Quản lý Danh mục món</h3>
             <div class="flex gap-2 mb-4">
                 <input id="newCategoryName" placeholder="Tên danh mục mới... VD: Trà trái cây" class="border p-2.5 rounded-xl flex-1 outline-none focus:ring-2 focus:ring-green-600 text-sm">
@@ -21,7 +37,7 @@
         </div>
 
         <div class="flex justify-between items-center mb-5">
-            <h1 class="text-2xl font-bold">⚙️ Quản lý Menu</h1>
+            <h1 class="text-2xl font-bold text-slate-900">⚙️ Quản lý Menu</h1>
             <button onclick="addDrink()" class="bg-green-600 text-white px-4 py-2 rounded-xl font-medium shadow hover:bg-green-700 transition">
                 + Thêm món
             </button>
@@ -29,28 +45,53 @@
 
         <div id="menuList" class="space-y-4"></div>
 
-        <button onclick="saveMenu()" class="mt-5 w-full bg-blue-600 text-white font-bold rounded-xl p-4 shadow-lg hover:bg-blue-700 transition">
-            LƯU MENU XUỐNG DATABASE
+        <button onclick="saveMenu()" class="mt-6 w-full bg-blue-600 text-white font-bold rounded-xl p-4 shadow-lg hover:bg-blue-700 transition tracking-wide text-sm">
+            LƯU THỰC ĐƠN XUỐNG DATABASE
         </button>
 
     </div>
 
     <script>
+        // CÀI ĐẶT MẬT KHẨU TẠI ĐÂY
+        const ADMIN_PASSWORD = "hcm,2026"; 
         let menu = [];
-        let globalCategories = []; // Mảng chứa danh sách danh mục dùng chung để render dropdown
+        let globalCategories = []; 
         const BACKEND_URL = "https://drink-order-backend.onrender.com";
+
+        // KIỂM TRA ĐĂNG NHẬP KHI MỞ TRANG
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem("is_admin_authenticated") === "true") {
+                document.getElementById("authOverlay").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                loadCategories();
+            }
+        });
+
+        function checkAuth() {
+            const input = document.getElementById("passwordInput").value;
+            if (input === ADMIN_PASSWORD) {
+                localStorage.setItem("is_admin_authenticated", "true");
+                document.getElementById("authOverlay").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                location.reload();
+            } else {
+                alert("❌ Mật khẩu không chính xác, vui lòng thử lại!");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("is_admin_authenticated");
+            location.reload();
+        }
 
         // ==========================================
         // THÀNH PHẦN 1: QUẢN LÝ DANH MỤC (CATEGORIES)
         // ==========================================
-
-        // Hàm tự động tải danh mục từ DB về đổ vào Dropdown món ăn và bảng quản lý danh mục
         async function loadCategories() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/categories`);
                 globalCategories = await res.json();
                 
-                // 1. Đổ dữ liệu ra danh sách nhãn quản lý để Admin tiện theo dõi / bấm xóa
                 const listBtnBox = document.getElementById("adminCategoryList");
                 if (listBtnBox) {
                     listBtnBox.innerHTML = globalCategories.map(cat => `
@@ -60,15 +101,12 @@
                         </span>
                     `).join("");
                 }
-
-                // Sau khi tải danh mục xong thì mới tải và render Menu để đồng bộ dữ liệu dropdown
                 await loadMenu();
             } catch (err) {
                 console.error("Lỗi tải danh mục:", err);
             }
         }
 
-        // Hàm xử lý khi Admin gõ chữ và bấm nút "Thêm danh mục"
         async function addCategory() {
             const input = document.getElementById("newCategoryName");
             const name = input.value.trim();
@@ -84,29 +122,25 @@
                 if (!res.ok) throw new Error(data.error);
 
                 input.value = "";
-                await loadCategories(); // Gọi tải lại danh sách mới ngay lập tức
+                await loadCategories(); 
             } catch (err) {
                 alert(err.message);
             }
         }
 
-        // Hàm xử lý khi Admin bấm nút dấu (×) để xóa danh mục
         async function deleteCategory(id) {
             if (!confirm("Bạn có chắc chắn muốn xóa danh mục này không? Thao tác này không làm ảnh hưởng đến món đã gán danh mục này.")) return;
             try {
                 await fetch(`${BACKEND_URL}/api/categories/${id}`, { method: "DELETE" });
-                await loadCategories(); // Tải lại danh sách sau khi xóa
+                await loadCategories(); 
             } catch (err) {
                 console.error("Lỗi xóa danh mục:", err);
             }
         }
 
-
         // ==========================================
         // THÀNH PHẦN 2: QUẢN LÝ MÓN ĂN (MENU)
         // ==========================================
-
-        // 1. TẢI DỮ LIỆU MENU TỪ SERVER
         async function loadMenu() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/menu`);
@@ -117,12 +151,10 @@
             }
         }
 
-        // 2. ĐỊNH DẠNG ĐỒNG TIỀN VNĐ
         function money(x) {
             return Number(x || 0).toLocaleString("vi-VN");
         }
 
-        // 3. HÀM RENDER ĐỒNG BỘ GIAO DIỆN MÓN ĂN
         function render() {
             const box = document.getElementById("menuList");
             box.innerHTML = "";
@@ -133,7 +165,6 @@
             }
 
             menu.forEach((item, index) => {
-                // Xử lý kiểm tra link ảnh thông minh
                 let imgSrc = 'https://placehold.co/120';
                 if (item.image) {
                     if (item.image.startsWith('http')) {
@@ -143,10 +174,9 @@
                     }
                 }
 
-                // Tạo các options danh mục động dựa vào cơ sở dữ liệu đã tải về
+                // FIX LỖI: Đồng bộ dropdown so khớp chính xác với DB
                 const categoryOptionsHtml = globalCategories.map(cat => {
-                    // Nếu thuộc tính category của món trùng tên danh mục nào thì tự động chọn (selected) danh mục đó
-                    const isSelected = item.category === cat.name ? "selected" : "";
+                    const isSelected = String(item.category).trim() === String(cat.name).trim() ? "selected" : "";
                     return `<option value="${cat.name}" ${isSelected}>${cat.name}</option>`;
                 }).join("");
 
@@ -171,7 +201,7 @@
                             <div>
                                 <div class="text-sm font-medium text-slate-600 mb-1">Danh mục sản phẩm</div>
                                 <select onchange="updateMenuField(${index}, 'category', this.value)" class="border rounded-lg w-full p-2 bg-white focus:ring-2 focus:ring-blue-400 outline-none text-sm">
-                                    <option value="">-- Chưa chọn danh mục --</option>
+                                    <option value="" ${!item.category ? 'selected' : ''}>-- Chưa chọn danh mục --</option>
                                     ${categoryOptionsHtml}
                                 </select>
                             </div>
@@ -201,23 +231,16 @@
             });
         }
 
-        // 4. HÀM CẬP NHẬT DỮ LIỆU TRONG MẢNG TAM THỜI
         function updateMenuField(index, field, value) {
-            if (menu[index]) {
-                menu[index][field] = value;
-            }
+            if (menu[index]) { menu[index][field] = value; }
         }
 
-        // 5. XỬ LÝ ĐỒNG BỘ GIÁ TIỀN VÀ TỰ PHÂN TÁCH DẤU PHẨY HÀNG NGHÌN
         function changePrice(el, index) {
             const raw = el.value.replace(/\D/g, "");
-            if (menu[index]) {
-                menu[index].price = raw ? Number(raw) : 0;
-            }
+            if (menu[index]) { menu[index].price = raw ? Number(raw) : 0; }
             el.value = money(raw);
         }
 
-        // 6. XỬ LÝ UPLOAD ẢNH LÊN CLOUDINARY THÔNG QUA BACKEND
         async function uploadImage(event, index) {
             const file = event.target.files[0];
             if (!file) return;
@@ -226,49 +249,33 @@
             formData.append("image", file);
 
             try {
-                const response = await fetch(`${BACKEND_URL}/api/upload`, {
-                    method: "POST",
-                    body: formData
-                });
-
+                const response = await fetch(`${BACKEND_URL}/api/upload`, { method: "POST", body: formData });
                 if (!response.ok) throw new Error("Upload thất bại");
-
                 const data = await response.json();
                 
                 menu[index].image = data.url;
-
                 const fullImageUrl = data.url.startsWith('http') ? data.url : `${BACKEND_URL}${data.url}`;
                 const card = event.target.closest(".drink-card");
                 if (card) {
                     const img = card.querySelector("img");
                     if (img) img.src = fullImageUrl;
                 }
-                
-                alert("Upload ảnh thành công! Đừng quên bấm 'LƯU MENU XUỐNG DATABASE'.");
+                alert("Upload ảnh thành công! Đừng quên bấm 'LƯU THỰC ĐƠN XUỐNG DATABASE'.");
             } catch (error) {
                 console.error(error);
                 alert("Upload ảnh thất bại!");
             }
         }
 
-        // 7. THÊM MÓN MỚI LÊN ĐẦU DANH SÁCH
         function addDrink() {
             const safeId = Number(String(Date.now()).slice(-6) + Math.floor(100 + Math.random() * 900));
-            // Món mới mặc định lấy tên danh mục đầu tiên trong danh sách (nếu có) để tránh trống dữ liệu
             const defaultCategory = globalCategories.length > 0 ? globalCategories[0].name : "";
-
             menu.unshift({
-                id: safeId,
-                name: "",
-                price: 0,
-                image: "",
-                category: defaultCategory, // Khởi tạo thuộc tính danh mục mặc định
-                status: "Đang bán"
+                id: safeId, name: "", price: 0, image: "", category: defaultCategory, status: "Đang bán"
             });
             render();
         }
 
-        // 8. XÓA MÓN KHỎI MENU TẠM THỜI
         function removeDrink(i) {
             if (confirm("Bạn có chắc chắn muốn xóa món này không?")) {
                 menu.splice(i, 1);
@@ -276,41 +283,32 @@
             }
         }
 
-        // 9. GỬI DỮ LIỆU ĐÃ CHUẨN HÓA LÊN BACKEND LƯU VÀO POSTGRESQL
         async function saveMenu() {
-            if (menu.length === 0) {
-                alert("Menu trống, không có gì để lưu!");
-                return;
-            }
+            if (menu.length === 0) { return alert("Menu trống, không có gì để lưu!"); }
 
             for (let i = 0; i < menu.length; i++) {
                 if (!menu[i].name || !menu[i].name.trim()) {
-                    alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món!`);
-                    return;
+                    return alert(`Lỗi: Món số ${i + 1} đang bị để trống Tên món!`);
                 }
-                
                 if (menu[i].image && menu[i].image.includes(BACKEND_URL)) {
                     menu[i].image = menu[i].image.replace(BACKEND_URL, "");
                 }
-
                 menu[i].price = menu[i].price ? Number(menu[i].price) : 0;
                 menu[i].image = menu[i].image || "";
-                menu[i].category = menu[i].category || ""; // Đảm bảo trường category không bị undefined
+                menu[i].category = menu[i].category || "";
                 menu[i].status = menu[i].status || "Đang bán";
             }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/menu`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(menu)
                 });
 
                 if (response.ok) {
                     alert("🎉 Đã lưu danh sách Menu sạch xuống Database thành công!");
-                    await loadMenu(); 
+                    await loadCategories(); 
                 } else {
                     alert("❌ Lưu menu thất bại. Hãy kiểm tra định dạng.");
                 }
@@ -319,10 +317,6 @@
                 alert("❌ Không thể kết nối đến server Backend Render!");
             }
         }
-
-        // CHẠY ĐẦU TIÊN KHI TRANG MỞ LÊN: Tải danh mục trước, sau đó tải menu tự động lồng bên trong
-        loadCategories();
     </script>
 </body>
-
 </html>
