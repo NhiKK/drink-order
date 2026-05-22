@@ -1,4 +1,3 @@
-// 3. TIẾP NHẬN ĐƠN HÀNG MỚI (ÉP TRUYỀN CHUỖI TRỐNG VÀO DETAIL ĐỂ TRÁNH LỖI NOT-NULL)
 router.post("/", async (req, res) => {
     try {
         const {
@@ -10,7 +9,7 @@ router.post("/", async (req, res) => {
             status
         } = req.body
 
-        // Giải pháp: Thêm lại cột detail vào câu lệnh SQL, nhưng gán giá trị mặc định là chuỗi rỗng '' ở mảng tham số
+       
         const result = await db.query(
             `
             INSERT INTO orders (
@@ -31,7 +30,7 @@ router.post("/", async (req, res) => {
                 items, 
                 note,
                 total,
-                "", // <--- TRUYỀN CHUỖI TRỐNG VÀO ĐÂY để database không bắt lỗi NOT NULL nữa
+                "", 
                 status || "Đã nhận"
             ]
         )
@@ -49,3 +48,17 @@ router.post("/", async (req, res) => {
         })
     }
 })
+router.get("/track/:phone", async (req, res) => {
+    try {
+        const phone = req.params.phone;
+        const result = await db.query(
+            "SELECT id, total, status, created_at FROM orders WHERE phone = $1 ORDER BY id DESC LIMIT 5",
+            [phone]
+        );
+        const orders = result.rows || result;
+        res.json(orders);
+    } catch (err) {
+        console.error("Lỗi tra cứu đơn:", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
