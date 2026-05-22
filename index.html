@@ -6,11 +6,21 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Tiệm Nhà Mị - Đặt Món Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Hiệu ứng mượt mà khi xổ danh sách món từ dưới lên */
+        .slide-up {
+            animation: slideUp 0.2s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
 </head>
 
 <body class="bg-slate-100">
 
-    <div class="max-w-md mx-auto bg-white min-h-screen pb-32">
+    <div class="max-w-md mx-auto bg-white min-h-screen pb-44">
         <div class="bg-white shadow-sm">
             <div class="relative">
                 <img src="assets/banner.jpg" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/600x200?text=Tiem+Nha+Mi'">
@@ -55,14 +65,29 @@
             <textarea id="orderNote" placeholder="Ghi chú chung cho toàn đơn..." class="border rounded-xl p-3 w-full outline-none focus:ring-2 focus:ring-green-600 text-sm" rows="2"></textarea>
         </div>
 
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 max-w-md mx-auto z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-            <div class="flex justify-between mb-3">
-                <div class="font-medium text-slate-700">Tạm tính</div>
-                <div id="total" class="font-bold text-red-500 text-lg">0đ</div>
+        <div id="cartBar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 max-w-md mx-auto z-40 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] rounded-t-2xl hidden">
+            
+            <div onclick="toggleCartDropdown()" class="flex justify-between items-center px-4 py-2.5 bg-slate-50 border-b border-slate-100 rounded-t-2xl cursor-pointer select-none">
+                <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+                    🛒 Giỏ hàng (<span id="cartBadgeCount" class="text-green-700 font-extrabold">0</span> món)
+                </span>
+                <span id="dropdownBtnLabel" class="text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg transition-colors">
+                    Xem món đã chọn ▼
+                </span>
             </div>
-            <button onclick="submitOrder()" class="bg-green-700 hover:bg-green-800 transition w-full text-white rounded-xl p-4 font-bold tracking-wide shadow-lg">
-                XÁC NHẬN ĐẶT MÓN MỚI
-            </button>
+
+            <div id="cartDropdownList" class="hidden max-h-48 overflow-y-auto p-4 space-y-2.5 bg-white border-b slide-up">
+                </div>
+
+            <div class="p-4 bg-white flex items-center justify-between gap-4">
+                <div>
+                    <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Tạm tính</div>
+                    <div id="total" class="font-black text-red-500 text-xl font-mono">0đ</div>
+                </div>
+                <button onclick="submitOrder()" class="flex-1 bg-green-700 hover:bg-green-800 transition text-white rounded-xl py-3.5 font-bold tracking-wide shadow-md active:scale-95">
+                    XÁC NHẬN ĐẶT MÓN MỚI
+                </button>
+            </div>
         </div>
     </div>
 
@@ -81,8 +106,9 @@
 
     <script>
         let menu = [];
-        let filteredMenu = []; // Mảng trung gian dùng để tìm kiếm
+        let filteredMenu = []; 
         let cart = {};
+        let isCartOpen = false; // Biến kiểm soát trạng thái đóng/mở vùng xổ xuống xem chi tiết món
         const BACKEND_URL = "https://drink-order-backend.onrender.com";
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -135,16 +161,12 @@
             if (phone) trackOrders(phone);
         }
 
-        // TẢI MENU TỪ SERVER
         async function loadMenu() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/menu`);
                 menu = await res.json();
-                
-                // Lọc bỏ những món Admin cài đặt cấu hình ngừng bán hẳn
                 menu = menu.filter(x => x.status !== "Ngừng bán");
 
-                // Khởi tạo giỏ hàng trống cho từng món
                 menu.forEach(item => {
                     if (!cart[item.id]) {
                         cart[item.id] = [{ qty: 0, sugar: "100%", ice: "100%", note: "" }];
@@ -158,7 +180,6 @@
             }
         }
 
-        // 🔍 HÀM XỬ LÝ LỌC TÌM KIẾM MÓN ĂN TRỰC TIẾP (MỚI)
         function handleSearch() {
             const keyword = document.getElementById("searchBar").value.trim().toLowerCase();
             if (!keyword) {
@@ -172,7 +193,6 @@
             render();
         }
 
-        // 📦 HÀM RENDER ĐỒNG BỘ HIỂN THỊ PHÂN CHIA THEO TỪNG DANH MỤC (MỚI)
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
@@ -183,17 +203,13 @@
                 return;
             }
 
-            // Nhóm các món ăn lại theo tên danh mục (Category Map)
             const categoriesMap = {};
             filteredMenu.forEach(item => {
                 const catName = item.category || "Khác";
-                if (!categoriesMap[catName]) {
-                    categoriesMap[catName] = [];
-                }
+                if (!categoriesMap[catName]) categoriesMap[catName] = [];
                 categoriesMap[catName].push(item);
             });
 
-            // Duyệt qua từng danh mục để in giao diện ra ngoài
             for (const category in categoriesMap) {
                 let categoryHtml = `
                     <div class="pt-4 mb-2">
@@ -213,7 +229,6 @@
                         fullImgUrl = item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
                     }
 
-                    // Render giao diện chọn tùy chọn đá/đường cho từng ly
                     let optionsHtml = "";
                     if (!sold && totalItemQty > 0) {
                         options.forEach((opt, index) => {
@@ -229,14 +244,14 @@
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2 text-xs">
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-1.5 bg-white outline-none">
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'sugar', this.value)" class="border rounded-lg p-1.5 bg-white outline-none focus:border-green-600">
                                         <option ${opt.sugar === "100%" ? "selected" : ""}>100% đường</option>
                                         <option ${opt.sugar === "70%" ? "selected" : ""}>70% đường</option>
                                         <option ${opt.sugar === "50%" ? "selected" : ""}>50% đường</option>
                                         <option ${opt.sugar === "30%" ? "selected" : ""}>30% đường</option>
                                         <option ${opt.sugar === "0%" ? "selected" : ""}>0% đường</option>
                                     </select>
-                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-1.5 bg-white outline-none">
+                                    <select onchange="updateOptionField(${item.id}, ${index}, 'ice', this.value)" class="border rounded-lg p-1.5 bg-white outline-none focus:border-green-600">
                                         <option ${opt.ice === "100%" ? "selected" : ""}>100% đá</option>
                                         <option ${opt.ice === "70%" ? "selected" : ""}>70% đá</option>
                                         <option ${opt.ice === "50%" ? "selected" : ""}>50% đá</option>
@@ -248,7 +263,6 @@
                         });
                     }
 
-                    // Khung bọc thông tin thẻ món uống
                     categoryHtml += `
                     <div class="bg-white rounded-2xl border p-3 mb-2 shadow-sm">
                         <div class="flex gap-3">
@@ -278,10 +292,21 @@
         function changeMainQty(id, n) {
             const options = cart[id];
             if (!options) return;
-            if (n > 0) options[options.length - 1].qty += 1;
-            else {
+            if (n > 0) {
+                if (options[options.length - 1].qty > 0) {
+                    options.push({ qty: 1, sugar: "100%", ice: "100%", note: "" });
+                } else {
+                    options[options.length - 1].qty = 1;
+                }
+            } else {
                 for (let i = options.length - 1; i >= 0; i--) {
-                    if (options[i].qty > 0) { options[i].qty -= 1; break; }
+                    if (options[i].qty > 0) { 
+                        options[i].qty -= 1; 
+                        if (options.length > 1 && options[i].qty === 0 && i === options.length - 1) {
+                            options.pop();
+                        }
+                        break; 
+                    }
                 }
             }
             render();
@@ -296,7 +321,10 @@
         }
 
         function updateOptionField(id, index, field, value) {
-            if (cart[id] && cart[id][index]) cart[id][index][field] = value;
+            if (cart[id] && cart[id][index]) {
+                cart[id][index][field] = value;
+                if(isCartOpen) renderCartDropdownData(); // Cập nhật danh sách đổ xuống thời gian thực
+            }
         }
 
         function showImage(src) {
@@ -306,13 +334,77 @@
         }
         function closeImage() { document.getElementById("imageModal").classList.add("hidden"); }
 
-        function calc() {
-            let total = 0;
+        // 🔼 HÀM MỚI: ĐÓNG / MỞ BẢNG XỔ XUỐNG XEM CHI TIẾT MÓN ĐÃ CHỌN (ĐỒNG BỘ LOGIC FILE CŨ)
+        function toggleCartDropdown() {
+            isCartOpen = !isCartOpen;
+            const dropdownBox = document.getElementById("cartDropdownList");
+            const btnLabel = document.getElementById("dropdownBtnLabel");
+
+            if(isCartOpen) {
+                dropdownBox.classList.remove("hidden");
+                btnLabel.innerHTML = "Thu gọn ▲";
+                renderCartDropdownData();
+            } else {
+                dropdownBox.classList.add("hidden");
+                btnLabel.innerHTML = "Xem món đã chọn ▼";
+            }
+        }
+
+        // 🔼 HÀM MỚI: ĐỔ DỮ LIỆU TỪ MẢNG GIỎ HÀNG VÀO VÙNG XỔ XUỐNG
+        function renderCartDropdownData() {
+            const container = document.getElementById("cartDropdownList");
+            container.innerHTML = "";
+
+            let hasItems = false;
             menu.forEach(item => {
                 const options = cart[item.id] || [];
-                options.forEach(opt => { total += (Number(item.price) || 0) * opt.qty; });
+                options.forEach((opt, idx) => {
+                    if (opt.qty <= 0) return;
+                    hasItems = true;
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                            <div>
+                                <span class="font-bold text-slate-800">${item.name}</span>
+                                <span class="text-[10px] text-slate-400 block mt-0.5">(Ly #${idx+1}: ${opt.sugar} | ${opt.ice})</span>
+                            </div>
+                            <div class="flex items-center gap-2 font-mono">
+                                <span class="text-slate-500">Số lượng:</span>
+                                <span class="font-bold text-slate-800 bg-white border px-2 py-0.5 rounded shadow-sm">${opt.qty}</span>
+                            </div>
+                        </div>
+                    `;
+                });
             });
+
+            if(!hasItems) {
+                container.innerHTML = `<div class="text-center text-slate-400 text-xs italic py-2">Chưa có món nào được chọn...</div>`;
+            }
+        }
+
+        function calc() {
+            let total = 0;
+            let totalQty = 0;
+            menu.forEach(item => {
+                const options = cart[item.id] || [];
+                options.forEach(opt => { 
+                    total += (Number(item.price) || 0) * opt.qty; 
+                    totalQty += opt.qty;
+                });
+            });
+
             document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ";
+            document.getElementById("cartBadgeCount").innerText = totalQty;
+
+            // Kiểm soát ẩn/hiện thanh công cụ giỏ hàng ở đáy
+            const cartBar = document.getElementById("cartBar");
+            if(totalQty > 0) {
+                cartBar.classList.remove("hidden");
+                if(isCartOpen) renderCartDropdownData();
+            } else {
+                cartBar.classList.add("hidden");
+                document.getElementById("cartDropdownList").classList.add("hidden");
+                isCartOpen = false;
+            }
         }
 
         async function submitOrder() {
@@ -350,6 +442,7 @@
                 document.getElementById("successModal").classList.remove("hidden");
                 document.getElementById("orderNote").value = "";
                 cart = {};
+                isCartOpen = false;
                 loadMenu();
             } catch (error) {
                 alert("Đặt món không thành công, vui lòng kiểm tra lại mạng!");
@@ -361,4 +454,5 @@
         loadMenu();
     </script>
 </body>
+
 </html>
