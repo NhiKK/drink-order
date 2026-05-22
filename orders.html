@@ -40,20 +40,21 @@
         
         <div class="bg-white shadow-sm mb-6 rounded-b-2xl overflow-hidden border-b border-slate-200">
             <div class="relative">
-                <img src="assets/banner.jpg" class="w-full h-32 object-cover" onerror="this.src='https://placehold.co/1200x300?text=Tiem+Nha+Mi+Banner'">
+                <img src="assets/banner.jpg" class="w-full h-32 md:h-40 object-cover" onerror="this.src='https://placehold.co/1200x300?text=Tiem+Nha+Mi+Banner'">
                 <div class="absolute inset-0 bg-black/5"></div>
             </div>
 
-            <div class="px-6 pb-4 relative flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -translate-y-6 sm:translate-y-0 sm:mt-[-30px]">
-                <div class="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                    <img src="assets/logo.jpg" class="w-20 h-20 rounded-full border-4 border-white bg-white shadow-md object-cover relative z-10" onerror="this.src='https://placehold.co/150'">
-                    <div class="sm:mb-2">
-                        <h1 class="text-xl font-bold text-green-700 uppercase tracking-wide">Hệ Thống Đơn Hàng</h1>
+            <div class="p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+                    <img src="assets/logo.jpg" class="w-20 h-20 rounded-full border-4 border-slate-100 bg-white shadow-sm object-cover relative" onerror="this.src='https://placehold.co/150'">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-extrabold text-green-700 uppercase tracking-wide">Hệ Thống Đơn Hàng</h1>
+                        <p class="text-slate-400 text-xs mt-0.5 hidden md:block">Trang quản trị vận hành Tiệm Nhà Mị</p>
                     </div>
                 </div>
-                <div class="sm:mb-2 flex gap-2">
-                    <button onclick="logout()" class="bg-slate-200 text-slate-700 font-bold text-xs px-3 py-2.5 rounded-xl hover:bg-slate-300 transition">🚪 Đăng xuất</button>
-                    <button onclick="loadOrders()" class="bg-green-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-green-800 active:scale-95 transition shadow-sm">🔄 LÀM MỚI ĐƠN</button>
+                <div class="flex items-center gap-2 w-full md:w-auto justify-center md:justify-end">
+                    <button onclick="logout()" class="bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-300 transition whitespace-nowrap">🚪 Đăng xuất</button>
+                    <button onclick="loadOrders()" class="bg-green-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-green-800 active:scale-95 transition shadow-sm whitespace-nowrap">🔄 LÀM MỚI ĐƠN</button>
                 </div>
             </div>
         </div>
@@ -68,7 +69,6 @@
         const ADMIN_PASSWORD = "hcm,2026"; 
         let allOrders = [];
         
-        // ✨ Đã chỉnh sửa: Bộ màu "headerBg" và "textBg" pastel nhẹ nhàng giúp phân biệt trực quan cực tốt
         const GROUP_CONFIGS = [
             { id: "group-new", title: "💥 ĐƠN MỚI (CHỜ LÀM)", statuses: ["Đã nhận", "Đã tiếp nhận"], defaultOpen: true, headerBg: "bg-slate-100", textBg: "text-slate-700" },
             { id: "group-processing", title: "⏳ ĐANG PHA CHẾ", statuses: ["Đang làm", "Đang pha chế"], defaultOpen: true, headerBg: "bg-amber-50", textBg: "text-amber-800" },
@@ -159,7 +159,6 @@
                             timeString = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'});
                         }
 
-                        // ✨ Đã chỉnh sửa: Biến mỗi đơn thành 1 "Card" bo tròn rounded-2xl, viền border-slate-200 nhạt, đổ bóng và khoảng cách mb-4 rất rõ ràng, rê chuột vào tự nổi bật bóng lên
                         groupHtml += `
                             <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow relative mb-2">
                                 <div class="md:w-1/4 space-y-0.5">
