@@ -61,8 +61,7 @@
                 <span id="cart-toggle-btn">Xem đơn ▼</span>
             </div>
 
-            <div id="cartDetail" class="hidden max-h-60 overflow-y-auto p-4 space-y-3 bg-white">
-                </div>
+            <div id="cartDetail" class="hidden max-h-60 overflow-y-auto p-4 space-y-3 bg-white"></div>
 
             <div class="p-4 bg-white flex items-center justify-between gap-4 border-t">
                 <div>
@@ -105,6 +104,7 @@
             }
         });
 
+        // 🌟 HÀM THEO DÕI TRẠNG THÁI ĐƠN HÀNG: ĐÃ THÊM NÚT ▼ XỔ XEM CHI TIẾT MÓN ĐÃ ĐẶT
         async function trackOrders(phone) {
             if (!phone) return;
             try {
@@ -122,14 +122,46 @@
                         if (order.status === "Đã giao" || order.status === "Hoàn tất") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
+                        // Phân rã danh sách món từ chuỗi JSON string trong database thành mảng dữ liệu công thức
+                        let itemsArray = [];
+                        try {
+                            itemsArray = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+                        } catch(e) { console.error(e); }
+
+                        let itemsDetailHtml = "";
+                        if(Array.isArray(itemsArray)) {
+                            itemsArray.forEach(subItem => {
+                                itemsDetailHtml += `
+                                    <div class="flex justify-between items-center text-xs text-slate-600 border-b border-slate-100 pb-1.5 pt-1.5 last:border-0">
+                                        <div>
+                                            <span class="font-semibold text-slate-800">${subItem.name}</span>
+                                            <span class="text-[10px] text-slate-400 block">${subItem.sugar || "100% đường"} | ${subItem.ice || "100% đá"}</span>
+                                        </div>
+                                        <span class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded font-mono">x${subItem.qty}</span>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        // Render cấu trúc giao diện kèm khối chi tiết và nút bấm xổ xuống ▼
                         orderListStatus.innerHTML += `
-                            <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex justify-between items-center">
-                                <div>
-                                    <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
-                                    <span class="text-slate-300 mx-1">|</span>
-                                    <span class="font-bold text-red-500 text-sm">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div onclick="toggleTrackDetail(${order.id})" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-50 select-none transition-colors">
+                                    <div class="space-y-0.5">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
+                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">${order.status}</span>
+                                        </div>
+                                        <div class="text-xs text-slate-500">
+                                            Tổng tiền: <span class="font-bold text-red-500 font-mono">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                                        </div>
+                                    </div>
+                                    <span id="track-btn-${order.id}" class="text-xs font-bold text-slate-400 bg-slate-100 border px-2 py-1 rounded-lg transition-all">Xem món ▼</span>
                                 </div>
-                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">${order.status}</span>
+                                
+                                <div id="track-detail-${order.id}" class="hidden bg-slate-50/50 border-t px-3 py-1 space-y-1 max-h-40 overflow-y-auto">
+                                    ${itemsDetailHtml}
+                                </div>
                             </div>`;
                     });
                 } else {
@@ -137,6 +169,24 @@
                 }
             } catch (err) {
                 console.error(err);
+            }
+        }
+
+        // 🌟 HÀM BỔ SUNG: ĐÓNG / MỞ VÙNG XEM CHI TIẾT MÓN ĐÃ ĐẶT (KHI BẤM NÚT ▼)
+        function toggleTrackDetail(orderId) {
+            const detailBox = document.getElementById(`track-detail-${orderId}`);
+            const btnLabel = document.getElementById(`track-btn-${orderId}`);
+            
+            if (detailBox.classList.contains("hidden")) {
+                detailBox.classList.remove("hidden");
+                btnLabel.innerText = "Thu gọn ▲";
+                btnLabel.classList.remove("text-slate-400", "bg-slate-100");
+                btnLabel.classList.add("text-green-700", "bg-green-50", "border-green-200");
+            } else {
+                detailBox.classList.add("hidden");
+                btnLabel.innerText = "Xem món ▼";
+                btnLabel.classList.remove("text-green-700", "bg-green-50", "border-green-200");
+                btnLabel.classList.add("text-slate-400", "bg-slate-100");
             }
         }
 
@@ -307,7 +357,9 @@
         function updateOptionField(id, index, field, value) {
             if (cart[id] && cart[id][index]) {
                 cart[id][index][field] = value;
-                renderCartDetail(); 
+                if (!document.getElementById("cartDetail").classList.contains("hidden")) {
+                    renderCartDetail();
+                }
             }
         }
 
@@ -318,7 +370,6 @@
         }
         function closeImage() { document.getElementById("imageModal").classList.add("hidden"); }
 
-        // 🔄 HÀM XỬ LÝ ĐÓNG MỞ ĐÚNG CHUẨN CỦA INDEX_OLD
         function toggleCart() {
             const detail = document.getElementById("cartDetail");
             const btn = document.getElementById("cart-toggle-btn");
@@ -332,7 +383,6 @@
             }
         }
 
-        // 🔄 RENDER DỮ LIỆU ĐỔ VÀO VÙNG #cartDetail CỦA INDEX_OLD
         function renderCartDetail() {
             const detail = document.getElementById("cartDetail");
             detail.innerHTML = "";
@@ -378,11 +428,9 @@
             document.getElementById("total").innerText = total.toLocaleString("vi-VN") + "đ";
             document.getElementById("cart-count").innerText = totalQty;
 
-            // Ẩn/Hiện thẻ chứa #cart-bar theo đúng logic mảng
             const cartBar = document.getElementById("cart-bar");
             if (totalQty > 0) {
                 cartBar.classList.remove("hidden");
-                // Nếu bảng chi tiết đang mở thì cập nhật lại số liệu realtime
                 if (!document.getElementById("cartDetail").classList.contains("hidden")) {
                     renderCartDetail();
                 }
@@ -429,6 +477,7 @@
                 document.getElementById("orderNote").value = "";
                 cart = {};
                 loadMenu();
+                trackOrders(phone); // Cập nhật lại khung đỏ trạng thái ngay lập tức
             } catch (error) {
                 alert("Đặt món không thành công, vui lòng kiểm tra lại mạng!");
             }
