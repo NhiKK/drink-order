@@ -32,9 +32,9 @@
             <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border border-green-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold text-green-800 flex items-center gap-1">📋 Đơn hàng của bạn</h3>
-                    <button onclick="refreshTracking()" class="text-xs text-green-700 bg-white border px-2 py-1 rounded-lg shadow-sm active:scale-95 transition">🔄 Làm mới trạng thái</button>
+                    <button onclick="refreshTracking()" class="text-xs text-green-700 bg-white border px-2 py-1 rounded-lg shadow-sm active:scale-95 transition">🔄 Làm mới</button>
                 </div>
-                <div id="orderListStatus" class="space-y-2.5">
+                <div id="orderListStatus" class="space-y-3">
                     </div>
             </div>
         </div>
@@ -58,23 +58,18 @@
         </div>
     </div>
 
-    <div id="imageModal" onclick="closeImage()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5 cursor-zoom-out animate-[fade_0.2s_ease]">
-        <img id="popupImage" class="max-w-[95vw] max-h-[85vh] rounded-2xl object-contain border-2 border-white/10 shadow-2xl animate-[zoom_0.2s_ease-out]">
+    <div id="imageModal" onclick="closeImage()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-5 cursor-zoom-out">
+        <img id="popupImage" class="max-w-[95vw] max-h-[85vh] rounded-2xl object-contain border-2 border-white/10 shadow-2xl">
     </div>
 
     <div id="successModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-5">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-xl">
             <div class="text-5xl mb-3">🎉</div>
             <div class="font-bold text-2xl text-green-700 mb-2">Đặt món thành công</div>
-            <p class="text-slate-600 mb-5">Cảm ơn bạn đã ủng hộ <b>Tiệm Nhà Mị</b><br>Đơn hàng đã được ghi nhận trên hệ thống tiến độ! ❤️</p>
+            <p class="text-slate-600 mb-5">Cảm ơn bạn đã ủng hộ <b>Tiệm Nhà Mị</b><br>Đơn hàng đã được ghi nhận thành công! ❤️</p>
             <button onclick="closeSuccess()" class="bg-green-700 text-white px-6 py-3 rounded-xl font-bold w-full hover:bg-green-800 transition">Đã hiểu</button>
         </div>
     </div>
-
-    <style>
-        @keyframes zoom { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-    </style>
 
     <script>
         let menu = [];
@@ -89,11 +84,11 @@
             if (savedName) document.getElementById("customer").value = savedName;
             if (savedPhone) {
                 document.getElementById("phone").value = savedPhone;
-                trackOrders(savedPhone); // Tiến hành kiểm tra đơn hàng cũ ngay lập tức
+                trackOrders(savedPhone);
             }
         });
 
-        // HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG
+        // HÀM GỌI API TRA CỨU TIẾN ĐỘ ĐƠN HÀNG + HIỂN THỊ MÓN ĂN CHI TIẾT
         async function trackOrders(phone) {
             if (!phone) return;
             try {
@@ -108,22 +103,50 @@
                     orderListStatus.innerHTML = "";
                     
                     orders.forEach(order => {
-                        // Chọn màu sắc hiển thị phù hợp với từng trạng thái đơn hàng
+                        // Xác định màu sắc hiển thị cho các trạng thái đơn hàng khác nhau
                         let statusColor = "bg-amber-100 text-amber-800 border-amber-200";
                         if (order.status === "Đang làm") statusColor = "bg-blue-100 text-blue-800 border-blue-200";
                         if (order.status === "Đã giao") statusColor = "bg-green-100 text-green-800 border-green-200";
                         if (order.status === "Đã hủy") statusColor = "bg-rose-100 text-rose-800 border-rose-200";
 
+                        // Giải nén danh sách món nước được lưu trong chuỗi JSON string
+                        let itemsHtml = "";
+                        try {
+                            const parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+                            if (Array.isArray(parsedItems)) {
+                                parsedItems.forEach(item => {
+                                    itemsHtml += `
+                                        <div class="text-xs text-slate-600 bg-slate-50/60 p-1.5 rounded border border-slate-100 flex justify-between items-start">
+                                            <div>
+                                                <span class="font-bold text-slate-800">${item.name}</span>
+                                                <span class="text-slate-400 mx-1">|</span>
+                                                <span class="text-slate-500 font-medium text-[11px]">Đường: ${item.sugar} • Đá: ${item.ice}</span>
+                                                ${item.note ? `<div class="text-[11px] text-amber-600 italic mt-0.5">✏️ Ghichu: ${item.note}</div>` : ''}
+                                            </div>
+                                            <span class="font-bold text-green-700 font-mono bg-green-50 px-1.5 py-0.5 rounded text-[11px]">${item.qty} ly</span>
+                                        </div>
+                                    `;
+                                });
+                            }
+                        } catch (e) {
+                            itemsHtml = `<div class="text-xs text-slate-400 italic">Không thể phân tích danh sách món ăn</div>`;
+                        }
+
                         orderListStatus.innerHTML += `
-                            <div class="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm text-sm">
-                                <div>
-                                    <span class="font-bold font-mono text-slate-700">#${order.id}</span>
-                                    <span class="text-slate-400 mx-1">•</span>
-                                    <span class="font-medium text-red-500">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                                    <div>
+                                        <span class="font-bold font-mono text-slate-700 text-sm">#${order.id}</span>
+                                        <span class="text-slate-300 mx-1.5">|</span>
+                                        <span class="font-bold text-red-500 text-sm">${Number(order.total).toLocaleString("vi-VN")}đ</span>
+                                    </div>
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">
+                                        ${order.status}
+                                    </span>
                                 </div>
-                                <span class="text-xs font-bold px-2.5 py-1 rounded-full border ${statusColor}">
-                                    ${order.status}
-                                </span>
+                                <div class="space-y-1">
+                                    ${itemsHtml}
+                                </div>
                             </div>
                         `;
                     });
@@ -135,7 +158,6 @@
             }
         }
 
-        // NÚT LÀM MỚI TIẾN ĐỘ THỦ CÔNG
         function refreshTracking() {
             const phone = document.getElementById("phone").value.trim();
             if (phone) trackOrders(phone);
@@ -159,13 +181,13 @@
             }
         }
 
-        // 2. RENDER GIAO DIỆN KHÁCH HÀNG
+        // 2. RENDER GIAO DIỆN KHÁCH HÀNG CHỌN MÓN
         function render() {
             const box = document.getElementById("menu");
             box.innerHTML = "";
 
             if (!menu || menu.length === 0) {
-                box.innerHTML = `<div class="text-center py-10 text-slate-400 italic">Quán đang cập nhật thực đơn, vui lòng quay lại sau!</div>`;
+                box.innerHTML = `<div class="text-center py-10 text-slate-400 italic">Quán đang cập nhật thực đơn!</div>`;
                 return;
             }
 
@@ -176,11 +198,7 @@
 
                 let fullImgUrl = 'https://placehold.co/120';
                 if (item.image) {
-                    if (item.image.startsWith('http')) {
-                        fullImgUrl = item.image;
-                    } else {
-                        fullImgUrl = `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
-                    }
+                    fullImgUrl = item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
                 }
 
                 let optionsHtml = "";
@@ -221,9 +239,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <textarea placeholder="Ghi chú thêm cho ly này..." 
-                                      oninput="updateOptionField(${item.id}, ${index}, 'note', this.value)" 
-                                      class="border rounded-lg w-full mt-2 p-2 text-xs bg-white outline-none focus:border-slate-400" rows="1">${opt.note || ""}</textarea>
+                            <textarea placeholder="Ghi chú ly này..." oninput="updateOptionField(${item.id}, ${index}, 'note', this.value)" class="border rounded-lg w-full mt-2 p-2 text-xs bg-white outline-none" rows="1">${opt.note || ""}</textarea>
                         </div>`;
                     });
 
@@ -250,7 +266,6 @@
                                         <div class="font-bold text-sm min-w-[15px] text-center">${totalItemQty}</div>
                                         <button onclick="changeMainQty(${item.id}, 1)" class="bg-green-600 hover:bg-green-700 text-white w-7 h-7 rounded font-bold flex items-center justify-center">+</button>
                                     </div>
-                                    ${totalItemQty > 0 ? `<span class="text-xs text-slate-400 italic">(Đã chọn ${options.filter(o => o.qty > 0).length} vị)</span>` : ''}
                                 </div>
                             `}
                         </div>
@@ -365,13 +380,11 @@
                 const data = await response.json();
                 if (!response.ok) { throw new Error(data.error || "Gửi đơn hàng lỗi") }
 
-                // LƯU THÔNG TIN VÀO LOCALSTORAGE ĐỂ LẦN SAU KHÔNG BỊ MẤT
                 localStorage.setItem("customer_name", customer);
                 localStorage.setItem("customer_phone", phone);
 
                 showSuccess();
                 
-                // Chỉ reset giỏ hàng và ghi chú đơn, giữ lại tên + SĐT để khách đặt tiếp đơn khác nếu muốn
                 document.getElementById("orderNote").value = "";
                 cart = {};
                 menu.forEach(item => {
@@ -379,7 +392,6 @@
                 });
                 render();
                 
-                // Cập nhật lại ngay bảng tiến độ theo dõi đơn
                 trackOrders(phone);
             } catch (error) {
                 console.error(error);
